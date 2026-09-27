@@ -397,3 +397,142 @@
     flex: 0 0 42px !important;
   }
 }
+
+/* Arena visual polish: tighter hierarchy, stronger focus, same Finals Atlas language. */
+.page {
+  background:
+    radial-gradient(circle at 78% 10%, rgba(213,255,63,.08), transparent 28%),
+    #101210;
+}
+.shell {
+  padding-top: 28px;
+}
+.topline {
+  color: #aab2a5;
+}
+.intro {
+  position: relative;
+  min-height: 300px;
+  padding: 62px 0 44px;
+  align-items: center;
+  background:
+    linear-gradient(90deg, rgba(213,255,63,.08), transparent 48%),
+    radial-gradient(circle at 78% 52%, rgba(213,255,63,.1), transparent 26%);
+}
+.intro::after {
+  content: "EUROLEAGUE";
+  position: absolute;
+  right: 0;
+  bottom: 38px;
+  color: rgba(213,255,63,.26);
+  font: 700 10px Arial, sans-serif;
+  letter-spacing: .18em;
+}
+.intro h1 {
+  max-width: 930px;
+  font-size: clamp(48px, 7vw, 92px);
+  line-height: .88;
+  letter-spacing: -.075em;
+}
+.intro h1 .heroLine {
+  display: inline-block;
+}
+.intro h1 .heroLine + br + .heroLine {
+  color: #d5ff3f;
+}
+.notice {
+  border-color: rgba(213,255,63,.3);
+  background: linear-gradient(100deg, #232c1e, #1b2119);
+  box-shadow: 0 12px 28px rgba(0,0,0,.16);
+}
+.panel,
+.challenge,
+.seasonCard {
+  border-color: #3f493d;
+  background: linear-gradient(145deg, #1a2019, #151915);
+  box-shadow: 0 16px 34px rgba(0,0,0,.14);
+}
+.panelHeading,
+.cardTop {
+  color: #b8c0b1;
+  letter-spacing: .16em;
+}
+.sportTabs {
+  gap: 10px;
+}
+.sportTab,
+.sportTabActive {
+  min-height: 58px;
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+}
+.sportTab:hover,
+.sportTabActive {
+  transform: translateY(-1px);
+}
+.matchList {
+  margin-top: 28px;
+  border-top-color: #465141;
+}
+.matchRow {
+  transition: background .18s ease;
+}
+.matchRow:hover {
+  background: rgba(213,255,63,.045);
+}
+.result,
+.resultActive {
+  border-radius: 4px;
+}
+.result:hover:not(:disabled) {
+  border-color: #d5ff3f;
+  color: #d5ff3f;
+}
+.score {
+  padding-top: 28px;
+}
+.score strong {
+  color: #f5f3eb;
+}
+.progress {
+  border-radius: 99px;
+  overflow: hidden;
+}
+.groupChoices {
+  gap: 10px;
+}
+.groupChoice,
+.groupActive {
+  border-radius: 4px;
+}
+.standingsWrap {
+  border-color: #3f493d;
+  box-shadow: 0 14px 26px rgba(0,0,0,.12);
+}
+@media (max-width: 720px) {
+  .shell {
+    padding-top: 18px;
+  }
+  .intro {
+    min-height: 0;
+    padding: 42px 0 32px;
+  }
+  .intro h1 {
+    font-size: clamp(42px, 13vw, 68px);
+  }
+  .intro::after {
+    bottom: 24px;
+    font-size: 9px;
+  }
+  .notice {
+    box-shadow: none;
+  }
+  .panel,
+  .challenge,
+  .seasonCard {
+    box-shadow: none;
+  }
+  .sportTab,
+  .sportTabActive {
+    min-height: 52px;
+  }
+}
