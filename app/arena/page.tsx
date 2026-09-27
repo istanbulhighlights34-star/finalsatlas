@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import styles from "./arena.module.css";
 
-type Game = { id: string; home: string; away: string; tipoff: string; result?: { home: number; away: number } };
+type Game = { id: string; home: string; away: string; tipoff: string; homeLogo?: string | null; awayLogo?: string | null; status?: string | null; result?: { home: number; away: number } };
 type Picks = { games: Record<string, "1" | "2">; topScorer: string; champion: string; finalFour: string[] };
 // EuroLeague Media Centre lists these times in CEST (UTC+2).
-const games: Game[] = [
+const initialGames: Game[] = [
   { id: "hta-bay", home: "Hapoel Tel Aviv", away: "Bayern Munich", tipoff: "2026-09-24T16:00:00Z", result: { home: 84, away: 86 } },
   { id: "dub-rmb", home: "Dubai Basketball", away: "Real Madrid", tipoff: "2026-09-24T16:00:00Z", result: { home: 78, away: 77 } },
   { id: "czv-zal", home: "Crvena Zvezda", away: "Žalgiris Kaunas", tipoff: "2026-09-24T18:00:00Z" },
@@ -19,8 +19,7 @@ const games: Game[] = [
   { id: "fbt-vir", home: "Fenerbahçe", away: "Virtus Bologna", tipoff: "2026-09-25T17:45:00Z" },
   { id: "par-mil", home: "Partizan", away: "Olimpia Milano", tipoff: "2026-09-25T18:45:00Z" },
 ];
-const teams = games.flatMap((game) => [game.home, game.away]);
-const firstLock = Date.parse(games[0].tipoff) - 120_000;
+const initialTeams = initialGames.flatMap((game) => [game.home, game.away]);
 const storageKey = "finalsatlas-euroleague-2026-27-round-1";
 const emptyPicks: Picks = { games: {}, topScorer: "", champion: "", finalFour: [] };
 const formatTime = (iso: string) => new Intl.DateTimeFormat(undefined, {
@@ -29,6 +28,8 @@ const formatTime = (iso: string) => new Intl.DateTimeFormat(undefined, {
 
 export default function ArenaPage() {
   const [now, setNow] = useState<number | null>(null);
+  const [games, setGames] = useState<Game[]>(initialGames);
+  const [liveSource, setLiveSource] = useState<"api" | "fallback">("fallback");
   const [picks, setPicks] = useState<Picks>(emptyPicks);
   const [saved, setSaved] = useState(true);
   const [clockSource, setClockSource] = useState<"checking" | "server" | "device">("checking");
@@ -44,6 +45,8 @@ export default function ArenaPage() {
   const [standings, setStandings] = useState<{ name: string; points: number; picks: number }[]>([]);
   const [inviteUrl, setInviteUrl] = useState("");
   const offset = useRef(0);
+  const teams = games.length ? games.flatMap((game) => [game.home, game.away]) : initialTeams;
+  const firstLock = games.length ? Date.parse(games[0].tipoff) - 120_000 : Infinity;
 
   useEffect(() => {
     async function syncClock() {
@@ -72,6 +75,25 @@ export default function ArenaPage() {
     const interval = setInterval(() => setNow(Date.now() + offset.current), 10_000);
     const resync = setInterval(() => { void syncClock(); }, 60_000);
     return () => { clearInterval(interval); clearInterval(resync); };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function refreshGames() {
+      try {
+        const response = await fetch("/api/arena/games", { cache: "no-store" });
+        const data = await response.json() as { available?: boolean; games?: Game[] };
+        if (active && response.ok && data.available && Array.isArray(data.games) && data.games.length) {
+          setGames(data.games);
+          setLiveSource("api");
+        }
+      } catch {
+        if (active) setLiveSource("fallback");
+      }
+    }
+    void refreshGames();
+    const interval = setInterval(() => { void refreshGames(); }, 5 * 60_000);
+    return () => { active = false; clearInterval(interval); };
   }, []);
 
   useEffect(() => {
@@ -169,7 +191,7 @@ export default function ArenaPage() {
       </div>
     </header>
     <div className={styles.shell}>
-      <div className={styles.topline}><span>FINALS ATLAS / ARENA PULSE</span><span>EUROLEAGUE · 2026/27</span></div>
+      <div className={styles.topline}><span>FINALS ATLAS / ARENA PULSE</span><span>{liveSource === "api" ? "LIVE DATA · API-SPORTS" : "EUROLEAGUE · 2026/27"}</span></div>
       <section className={styles.intro}><div><p className={styles.kicker}>ROUND 01 · 24–25 SEPTEMBER</p><h1><span className={styles.heroLine}><span className={styles.heroInitial}>F</span>OLLOW EVERY FINAL</span><br /><span className={styles.heroLine}><span className={styles.heroInitial}>A</span>CROSS EVERY ARENA</span></h1></div></section>
       <div className={styles.notice} role="status"><strong>{account ? `Signed in: ${account.email}` : "Personal preview"}</strong><span>{account ? "Your new picks are saved to your account. Scores appear after verified results are entered." : "Your picks are saved in this browser only. Sign in to save future picks and join groups. Existing device picks are not transferred after their deadlines."} {clockSource === "device" && "Server time is unavailable; deadlines currently use your device clock."}</span></div>
       {available && <section className={styles.panel} style={{ padding: 24, marginBottom: 24 }} aria-label="Account and friend groups">
