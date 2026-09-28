@@ -42,7 +42,8 @@ export async function PUT(request: Request) {
   const submissionRound = game ? round : null;
   const bonusGames = bonusRound ? fixtures.filter(([id]) => fixtureRound[id] === bonusRound) : [];
   const lock = game ? Date.parse(game[3]) - 120_000 : bonusRound ? Math.min(...bonusGames.map(([, , , tipoff]) => Date.parse(tipoff) - 120_000)) : firstLock;
-  if (!game && !bonusRound && !["champion", "finalFour"].includes(key || "")) return jsonError("Unknown pick");
+  const bingoKey = key === "bingoCard:week-1";
+  if (!game && !bonusRound && !bingoKey && !["champion", "finalFour"].includes(key || "")) return jsonError("Unknown pick");
   if (Date.now() >= lock) return jsonError("This pick has closed", 409);
   if (game && selection !== "1" && selection !== "2") return jsonError("Invalid winner");
   if ((bonusRound || key === "champion") && selection && !teams.includes(selection as typeof teams[number])) return jsonError("Invalid team");
@@ -51,7 +52,15 @@ export async function PUT(request: Request) {
     try { chosen = JSON.parse(selection || ""); } catch { return jsonError("Invalid teams"); }
     if (!Array.isArray(chosen) || chosen.length > 4 || new Set(chosen).size !== chosen.length || chosen.some(t => !teams.includes(t))) return jsonError("Invalid teams");
   }
-  if (typeof selection !== "string" || selection.length > 300) return jsonError("Invalid selection");
+  if (bingoKey) {
+    let card: unknown;
+    try { card = JSON.parse(selection || ""); } catch { return jsonError("Invalid Bingo card"); }
+    const value = card as { elite?: unknown; middle?: unknown; outsider?: unknown };
+    const valid = value && Array.isArray(value.elite) && value.elite.length === 3 && Array.isArray(value.middle) && value.middle.length === 4 && Array.isArray(value.outsider) && value.outsider.length === 3
+      && [...value.elite, ...value.middle, ...value.outsider].every(team => typeof team === "string" && team.length > 1 && team.length < 60);
+    if (!valid) return jsonError("Complete all three rows before locking your card.");
+  }
+  if (typeof selection !== "string" || selection.length > 600) return jsonError("Invalid selection");
   if (selection) {
     const saved = await sql`INSERT INTO arena_picks (user_id, key, selection)
       SELECT ${user.id}, ${key}, ${selection}
