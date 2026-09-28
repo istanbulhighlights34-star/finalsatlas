@@ -42,7 +42,7 @@ export async function PUT(request: Request) {
   const submissionRound = game ? round : null;
   const bonusGames = bonusRound ? fixtures.filter(([id]) => fixtureRound[id] === bonusRound) : [];
   const lock = game ? Date.parse(game[3]) - 120_000 : bonusRound ? Math.min(...bonusGames.map(([, , , tipoff]) => Date.parse(tipoff) - 120_000)) : firstLock;
-  const bingoKey = key === "bingoCard:week-1";
+  const bingoKey = /^bingoCard:\\d{4}-\\d{2}-\\d{2}$/.test(key || "");
   if (!game && !bonusRound && !bingoKey && !["champion", "finalFour"].includes(key || "")) return jsonError("Unknown pick");
   if (Date.now() >= lock) return jsonError("This pick has closed", 409);
   if (game && selection !== "1" && selection !== "2") return jsonError("Invalid winner");
