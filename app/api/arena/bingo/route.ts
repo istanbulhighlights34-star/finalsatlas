@@ -38,6 +38,21 @@ async function ensureTables(sql: ReturnType<typeof database>) {
     updated_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (week_key, team)
   )`;
+  await sql`CREATE TABLE IF NOT EXISTS arena_bingo_fixtures (
+    week_key text NOT NULL,
+    fixture_id text NOT NULL,
+    league text NOT NULL,
+    home text NOT NULL,
+    away text NOT NULL,
+    home_logo text,
+    away_logo text,
+    kickoff timestamptz NOT NULL,
+    status text,
+    home_score integer,
+    away_score integer,
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (week_key, fixture_id)
+  )`;
 }
 
 function weekWindow() {
@@ -73,8 +88,16 @@ async function sync(sql: ReturnType<typeof database>, week: ReturnType<typeof we
       if (!response.ok) throw new Error(`API-Sports HTTP ${response.status}`);
       const payload = await response.json() as { response?: any[]; errors?: unknown };
       for (const item of payload.response || []) {
-        const home = trackedName(String(item.teams?.home?.name || ""));
-        const away = trackedName(String(item.teams?.away?.name || ""));
+        const fixtureId = String(item.fixture?.id || "");
+        const homeName = String(item.teams?.home?.name || "");
+        const awayName = String(item.teams?.away?.name || "");
+        if (fixtureId) {
+          await sql`INSERT INTO arena_bingo_fixtures (week_key, fixture_id, league, home, away, home_logo, away_logo, kickoff, status, home_score, away_score)
+            VALUES (${week.key}, ${fixtureId}, ${String(item.league?.name || "")}, ${homeName}, ${awayName}, ${String(item.teams?.home?.logo || "")}, ${String(item.teams?.away?.logo || "")}, ${String(item.fixture?.date || "")}, ${String(item.fixture?.status?.short || "NS")}, ${Number.isInteger(item.goals?.home) ? Number(item.goals.home) : null}, ${Number.isInteger(item.goals?.away) ? Number(item.goals.away) : null})
+            ON CONFLICT (week_key, fixture_id) DO UPDATE SET league=EXCLUDED.league, home=EXCLUDED.home, away=EXCLUDED.away, home_logo=EXCLUDED.home_logo, away_logo=EXCLUDED.away_logo, kickoff=EXCLUDED.kickoff, status=EXCLUDED.status, home_score=EXCLUDED.home_score, away_score=EXCLUDED.away_score, updated_at=now()`;
+        }
+        const home = trackedName(homeName);
+        const away = trackedName(awayName);
         const short = String(item.fixture?.status?.short || "NS");
         const homeScore = Number.isInteger(item.goals?.home) ? Number(item.goals.home) : null;
         const awayScore = Number.isInteger(item.goals?.away) ? Number(item.goals.away) : null;
@@ -101,6 +124,15 @@ export async function GET() {
   await ensureTables(sql);
   const week = weekWindow();
   await sync(sql, week);
-  const rows = await sql`SELECT team, opponent, kickoff, status, won, home_score, away_score FROM arena_bingo_team_results WHERE week_key=${week.key} ORDER BY kickoff`;
-  return NextResponse.json({ available: !!API_KEY, week: week.key, teams: rows.map(row => ({ ...row, live: LIVE.has(String(row.status || "")) })) }, { headers: { "Cache-Control": "no-store" } });
+  const [rows, fixtures] = await Promise.all([
+    sql`SELECT team, opponent, kickoff, status, won, home_score, away_score FROM arena_bingo_team_results WHERE week_key=${week.key} ORDER BY kickoff`,
+    sql`SELECT fixture_id AS id, league, home, away, home_logo, away_logo, kickoff, status, home_score, away_score FROM arena_bingo_fixtures WHERE week_key=${week.key} ORDER BY kickoff`,
+  ]);
+  return NextResponse.json({
+    available: !!API_KEY,
+    week: week.key,
+    window: { from: week.from, to: week.to },
+    teams: rows.map(row => ({ ...row, live: LIVE.has(String(row.status || "")) })),
+    fixtures: fixtures.map(row => ({ ...row, live: LIVE.has(String(row.status || "")), final: FINAL.has(String(row.status || "")) })),
+  }, { headers: { "Cache-Control": "no-store" } });
 }
