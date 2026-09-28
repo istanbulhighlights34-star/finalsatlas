@@ -536,3 +536,34 @@
     min-height: 52px;
   }
 }
+
+
+/* Weekly picks, locked submissions and completed-round scoring */
+.submitBar { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-top:20px; padding:16px 18px; border:1px solid #465141; background:#20271d; color:#aab3a5; font:13px/1.4 Arial,sans-serif; }
+.submitButton { min-height:44px; padding:0 18px; border:1px solid #d5ff3f; border-radius:3px; background:#d5ff3f; color:#101210; font:700 12px Arial,sans-serif; letter-spacing:.06em; text-transform:uppercase; cursor:pointer; }
+.submitButton:disabled { border-color:#4b5546; background:#2a3028; color:#879080; cursor:not-allowed; }
+.pickFeedback { grid-column:2/-1; margin:-5px 0 8px; color:#d5ff3f; font:700 11px Arial,sans-serif; letter-spacing:.04em; }
+.historySection { margin:22px 0 26px; padding:26px 28px; border:1px solid #3f493d; background:linear-gradient(145deg,#1a2019,#151915); }
+.historyHeading { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; padding-bottom:17px; border-bottom:1px solid #3b4039; }
+.historyHeading h2 { margin:10px 0 0; color:#f5f3eb; font:700 clamp(23px,3vw,34px)/1 Arial,sans-serif; letter-spacing:-.05em; }
+.historyHeading > span { color:#aab3a5; font:700 10px Arial,sans-serif; letter-spacing:.1em; text-transform:uppercase; }
+.historyList { display:grid; }
+.historyRow { display:grid; grid-template-columns:minmax(0,1fr) 110px 150px; align-items:center; gap:16px; min-height:54px; padding:10px 0; border-bottom:1px solid #2b312a; color:#e4e8df; font:13px/1.4 Arial,sans-serif; }
+.historyRow:last-child { border-bottom:0; }
+.historyRow span { min-width:0; }
+.historyRow i { padding:0 5px; color:#7f897b; font-style:normal; }
+.historyRow strong { color:#f5f3eb; white-space:nowrap; }
+.historyRow em { color:#899286; font-size:11px; font-style:normal; text-align:right; white-space:nowrap; }
+.historyRow .pointsWon { color:#d5ff3f; font-weight:700; }
+.historyRow .pointsMissed { color:#f0a28a; font-weight:700; }
+@media (max-width:720px) {
+ .submitBar { align-items:stretch; flex-direction:column; gap:12px; padding:14px; }
+ .submitButton { width:100%; }
+ .pickFeedback { grid-column:1/-1; margin:0 0 8px; }
+ .historySection { padding:20px 16px; }
+ .historyHeading { align-items:flex-start; flex-direction:column; gap:8px; }
+ .historyRow { grid-template-columns:minmax(0,1fr) auto; gap:5px 10px; padding:12px 0; }
+ .historyRow span { grid-column:1/-1; }
+ .historyRow strong { grid-column:1; font-size:12px; }
+ .historyRow em { grid-column:2; grid-row:2; text-align:right; font-size:10px; }
+}

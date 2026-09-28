@@ -12,7 +12,18 @@ export const fixtures = [
   ["bjk-vbc", "Beşiktaş", "Valencia Basket", "2026-09-25T17:00:00Z"],
   ["fbt-vir", "Fenerbahçe", "Virtus Bologna", "2026-09-25T17:45:00Z"],
   ["par-mil", "Partizan", "Olimpia Milano", "2026-09-25T18:45:00Z"],
+  ["r2-dub-bar", "Dubai Basketball", "FC Barcelona", "2026-09-29T16:00:00Z"],
+  ["r2-efs-rmb", "Anadolu Efes", "Real Madrid", "2026-09-29T17:00:00Z"],
+  ["r2-zal-oly", "Žalgiris Kaunas", "Olympiacos", "2026-09-29T17:00:00Z"],
+  ["r2-fbt-bay", "Fenerbahçe", "Bayern Munich", "2026-09-29T17:45:00Z"],
+  ["r2-czv-hta", "Crvena Zvezda", "Hapoel Tel Aviv", "2026-09-29T18:00:00Z"],
+  ["r2-vbc-kba", "Valencia Basket", "Baskonia", "2026-09-29T19:30:00Z"],
+  ["r2-mil-vir", "Olimpia Milano", "Virtus Bologna", "2026-09-29T19:30:00Z"],
+  ["r2-pbb-par", "Paris Basketball", "Partizan", "2026-09-29T19:45:00Z"],
+  ["r2-mta-bjk", "Maccabi Tel Aviv", "Beşiktaş", "2026-09-30T18:05:00Z"],
+  ["r2-pao-asv", "Panathinaikos", "ASVEL", "2026-09-30T18:15:00Z"],
 ] as const;
+export const fixtureRound: Record<string, number> = Object.fromEntries(fixtures.map(([id]) => [id, id.startsWith("r2-") ? 2 : 1]));
 export const teams: string[] = fixtures.flatMap((game) => [game[1], game[2]]);
 export const firstLock = Date.parse(fixtures[0][3]) - 120_000;
 export const hash = (value: string) => createHash("sha256").update(value).digest("hex");
