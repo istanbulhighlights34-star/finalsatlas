@@ -42,7 +42,9 @@ export default function ArenaPage() {
   const [now, setNow] = useState<number | null>(null);
   const [games, setGames] = useState<Game[]>(initialGames);
   const [liveSource, setLiveSource] = useState<"api" | "fallback">("fallback");
-  const [picks, setPicks] = useState<Picks>(emptyPicks);\n  const [submittedRounds, setSubmittedRounds] = useState<number[]>([]);\n  const [submittingRound, setSubmittingRound] = useState(false);
+  const [picks, setPicks] = useState<Picks>(emptyPicks);
+  const [submittedRounds, setSubmittedRounds] = useState<number[]>([]);
+  const [submittingRound, setSubmittingRound] = useState(false);
   const [saved, setSaved] = useState(true);
   const [clockSource, setClockSource] = useState<"checking" | "server" | "device">("checking");
   const [account, setAccount] = useState<{ id: string; email: string } | null>(null);
@@ -81,7 +83,8 @@ export default function ArenaPage() {
       const value = localStorage.getItem(storageKey);
       if (value) {
         const stored = JSON.parse(value) as Partial<Picks>;
-        setPicks({ games: stored.games || {}, topScorer: stored.topScorer || "", champion: stored.champion || "", finalFour: Array.isArray(stored.finalFour) ? stored.finalFour : [] });\n        setSubmittedRounds(Array.isArray((stored as { submittedRounds?: number[] }).submittedRounds) ? (stored as { submittedRounds: number[] }).submittedRounds : []);
+        setPicks({ games: stored.games || {}, topScorer: stored.topScorer || "", champion: stored.champion || "", finalFour: Array.isArray(stored.finalFour) ? stored.finalFour : [] });
+        setSubmittedRounds(Array.isArray((stored as { submittedRounds?: number[] }).submittedRounds) ? (stored as { submittedRounds: number[] }).submittedRounds : []);
       }
     } catch { setSaved(false); }
     const interval = setInterval(() => setNow(Date.now() + offset.current), 10_000);
@@ -122,7 +125,8 @@ export default function ArenaPage() {
         const [savedPicks, membership] = await Promise.all([fetch("/api/arena/picks"), fetch("/api/arena/groups")]);
         if (savedPicks.ok) {
           const values = (await savedPicks.json()).picks as Record<string, string>;
-          setPicks({ games: Object.fromEntries(Object.entries(values).filter(([key]) => key.startsWith("game:")).map(([key, value]) => [key.slice(5), value as "1" | "2"])), topScorer: values.topScorer || "", champion: values.champion || "", finalFour: JSON.parse(values.finalFour || "[]") });\n          setSubmittedRounds([1, 2].filter(round => values[`roundSubmitted:${round}`] === "submitted"));
+          setPicks({ games: Object.fromEntries(Object.entries(values).filter(([key]) => key.startsWith("game:")).map(([key, value]) => [key.slice(5), value as "1" | "2"])), topScorer: values.topScorer || "", champion: values.champion || "", finalFour: JSON.parse(values.finalFour || "[]") });
+          setSubmittedRounds([1, 2].filter(round => values[`roundSubmitted:${round}`] === "submitted"));
         }
         if (membership.ok) setGroups((await membership.json()).groups);
         const invite = inviteFromUrl || localStorage.getItem("finalsatlas-pending-invite");
@@ -179,7 +183,28 @@ export default function ArenaPage() {
   const openCount = now === null ? 0 : games.filter((game) => now < Date.parse(game.tipoff) - 120_000).length;
   const timeZone = now === null ? "Your local time" : new Intl.DateTimeFormat(undefined, { timeZoneName: "short" }).formatToParts(new Date(now)).find((part) => part.type === "timeZoneName")?.value || "Local time";
 
-  async function submitCurrentRound() {\n    if (complete !== roundGames.length || !roundGames.length || roundSubmitted) return;\n    const roundLock = Math.min(...roundGames.map(game => Date.parse(game.tipoff) - 120_000));\n    if (now === null || now >= roundLock) { setNow(Date.now() + offset.current); setMessage("The submission window for this round has closed."); return; }\n    setSubmittingRound(true);\n    try {\n      if (account) {\n        const response = await fetch("/api/arena/picks", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "submitRound", round: 2 }) });\n        const data = await response.json();\n        if (!response.ok) throw new Error(data.error || "Could not submit picks.");\n      } else {\n        const nextRounds = [...submittedRounds, 2];\n        setSubmittedRounds(nextRounds);\n        localStorage.setItem(storageKey, JSON.stringify({ ...picks, submittedRounds: nextRounds }));\n      }\n      setSubmittedRounds(previous => previous.includes(2) ? previous : [...previous, 2]);\n      setMessage("Week 2 picks submitted and locked.");\n    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not submit picks."); }\n    finally { setSubmittingRound(false); }\n  }\n\n  return <main className={styles.page}>
+  async function submitCurrentRound() {
+    if (complete !== roundGames.length || !roundGames.length || roundSubmitted) return;
+    const roundLock = Math.min(...roundGames.map(game => Date.parse(game.tipoff) - 120_000));
+    if (now === null || now >= roundLock) { setNow(Date.now() + offset.current); setMessage("The submission window for this round has closed."); return; }
+    setSubmittingRound(true);
+    try {
+      if (account) {
+        const response = await fetch("/api/arena/picks", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "submitRound", round: 2 }) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not submit picks.");
+      } else {
+        const nextRounds = [...submittedRounds, 2];
+        setSubmittedRounds(nextRounds);
+        localStorage.setItem(storageKey, JSON.stringify({ ...picks, submittedRounds: nextRounds }));
+      }
+      setSubmittedRounds(previous => previous.includes(2) ? previous : [...previous, 2]);
+      setMessage("Week 2 picks submitted and locked.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not submit picks."); }
+    finally { setSubmittingRound(false); }
+  }
+
+  return <main className={styles.page}>
     <header className={styles.header}>
       <Link className="brand" href="/" aria-label="Finals Atlas Arena home"><img className="brand-mark" src="/icon.svg" alt="" aria-hidden="true" /><span className="brand-name"><span>FINALS</span><span>ATLAS</span></span></Link>
       <nav aria-label="Primary navigation">
@@ -249,7 +274,8 @@ export default function ArenaPage() {
         <p>Football is part of the Finals Atlas plan. Domestic leagues and European cups will appear here when the first football schedule is ready.</p>
         <div className={styles.emptySportMeta}><span>STATUS</span><strong>PREPARING THE FIXTURES</strong><span>MODE</span><strong>DOMESTIC LEAGUES · EUROPEAN CUPS</strong></div>
       </section>}
-      <div className={selectedSport === "football" ? styles.hiddenSportContent : ""}>\n      <section id="matchroom" className={styles.heroGrid} aria-label="EuroLeague Round 2 predictions">
+      <div className={selectedSport === "football" ? styles.hiddenSportContent : ""}>
+      <section id="matchroom" className={styles.heroGrid} aria-label="EuroLeague Round 2 predictions">
         <article className={styles.challenge}>
           <div className={styles.cardTop}><span>ROUND 02 / {roundGames.length} GAMES</span><span>{timeZone}</span></div>
           <div className={styles.challengeBody}>
@@ -267,9 +293,11 @@ export default function ArenaPage() {
                     update({ ...picks, games: { ...picks.games, [game.id]: choice } });
                   }}>{score ? (choice === "1" ? score.home : score.away) : choice}</button>)}
                 </div>
+                {game.result && <p className={styles.pickFeedback}>{picks.games[game.id] ? ((picks.games[game.id] === "1" && game.result.home > game.result.away) || (picks.games[game.id] === "2" && game.result.away > game.result.home) ? "Correct · +5 points" : "Incorrect · 0 points") : "No pick · 0 points"}</p>}
               </div>;
             })}</div>
-            <p className={styles.status}>{complete} / {roundGames.length} selected · {openCount} games open · {saved ? account ? "Saved to account" : "Saved on this device" : "Saving or unavailable"}</p>\n            <div className={styles.submitBar}><span>{roundSubmitted ? "Week 2 picks are locked." : "Review your picks, then submit to lock this round."}</span><button className={styles.submitButton} type="button" disabled={roundSubmitted || submittingRound || complete !== roundGames.length || now === null || now >= Math.min(...roundGames.map(game => Date.parse(game.tipoff) - 120_000))} onClick={() => void submitCurrentRound()}>{roundSubmitted ? "Picks submitted ✓" : submittingRound ? "Submitting…" : "Submit week 2 picks"}</button></div>
+            <p className={styles.status}>{complete} / {roundGames.length} selected · {openCount} games open · {saved ? account ? "Saved to account" : "Saved on this device" : "Saving or unavailable"}</p>
+            <div className={styles.submitBar}><span>{roundSubmitted ? "Week 2 picks are locked." : "Review your picks, then submit to lock this round."}</span><button className={styles.submitButton} type="button" disabled={roundSubmitted || submittingRound || !saved || complete !== roundGames.length || now === null || now >= Math.min(...roundGames.map(game => Date.parse(game.tipoff) - 120_000))} onClick={() => void submitCurrentRound()}>{roundSubmitted ? "Picks submitted ✓" : submittingRound ? "Submitting…" : "Submit week 2 picks"}</button></div>
           </div>
         </article>
         <aside className={styles.seasonCard}>
@@ -281,7 +309,8 @@ export default function ArenaPage() {
           </div>
         </aside>
       </section>
-      <section className={styles.historySection} aria-label="Week 1 results and points"><div className={styles.historyHeading}><div><span className={styles.pulseKicker}>COMPLETED ROUND</span><h2>Week 1 · Results & points</h2></div><span>{historyGames.filter(game => !!game.result).length} / {historyGames.length} results</span></div><div className={styles.historyList}>{historyGames.map(game => { const correct = !!game.result && ((picks.games[game.id] === "1" && game.result.home > game.result.away) || (picks.games[game.id] === "2" && game.result.away > game.result.home)); return <div className={styles.historyRow} key={game.id}><span>{game.home} <i>vs</i> {game.away}</span><strong>{game.result ? `${game.result.home} – ${game.result.away}` : "Result pending"}</strong><em className={game.result ? (correct ? styles.pointsWon : styles.pointsMissed) : ""}>{game.result ? (picks.games[game.id] ? (correct ? "Correct · +5 pts" : "Incorrect · 0 pts") : "No pick · 0 pts") : "Awaiting final score"}</em></div>; })}</div></section>\n      <section id="standings" className={styles.dashboardGrid} aria-label="Season bonus predictions">
+      <section className={styles.historySection} aria-label="Week 1 results and points"><div className={styles.historyHeading}><div><span className={styles.pulseKicker}>COMPLETED ROUND</span><h2>Week 1 · Results & points</h2></div><span>{historyGames.filter(game => !!game.result).length} / {historyGames.length} results</span></div><div className={styles.historyList}>{historyGames.map(game => { const correct = !!game.result && ((picks.games[game.id] === "1" && game.result.home > game.result.away) || (picks.games[game.id] === "2" && game.result.away > game.result.home)); return <div className={styles.historyRow} key={game.id}><span>{game.home} <i>vs</i> {game.away}</span><strong>{game.result ? `${game.result.home} – ${game.result.away}` : "Result pending"}</strong><em className={game.result ? (correct ? styles.pointsWon : styles.pointsMissed) : ""}>{game.result ? (picks.games[game.id] ? (correct ? "Correct · +5 pts" : "Incorrect · 0 pts") : "No pick · 0 pts") : "Awaiting final score"}</em></div>; })}</div></section>
+      <section id="standings" className={styles.dashboardGrid} aria-label="Season bonus predictions">
         <article className={styles.panel}><div className={styles.panelHeading}><span>SEASON CALL</span><span>+10 POINTS</span></div><div className={styles.sideBody}><h2>Champion</h2><p className={styles.muted}>Pick the 2026/27 champion before the first game.</p><label className={styles.selectLabel} htmlFor="champion">Choose a team</label><select id="champion" value={picks.champion} disabled={!bonusOpen} onChange={(event) => { if (Date.now() + offset.current < firstLock) update({ ...picks, champion: event.target.value }); else setNow(Date.now() + offset.current); }}><option value="">Select a team</option>{teams.map((team) => <option key={team}>{team}</option>)}</select></div></article>
         <article className={styles.panel}><div className={styles.panelHeading}><span>FINAL FOUR CALL</span><span>+3 PER TEAM</span></div><div className={styles.sideBody}><h2>Final Four</h2><p className={styles.muted}>Choose up to four teams before the first game. Each correct team earns three points.</p><div className={styles.teamPicker}>{teams.map((team) => {
           const selected = picks.finalFour.includes(team);
@@ -291,7 +320,8 @@ export default function ArenaPage() {
           }}>{team}<span aria-hidden="true">{selected ? "✓" : "+"}</span></button>;
         })}</div><p className={styles.status}>{picks.finalFour.length} / 4 selected · {bonusOpen ? "Open" : "Locked"}</p></div></article>
       </section>
-      </div>\n      <div className={styles.bottomStrip}><span>Match source: <a href="https://mediacentre.euroleague.net/" target="_blank" rel="noreferrer">EuroLeague Media Centre ↗</a></span><span>Independent fan preview · No prize or entry fee</span></div>
+      </div>
+      <div className={styles.bottomStrip}><span>Match source: <a href="https://mediacentre.euroleague.net/" target="_blank" rel="noreferrer">EuroLeague Media Centre ↗</a></span><span>Independent fan preview · No prize or entry fee</span></div>
     </div>
   </main>;
 }
