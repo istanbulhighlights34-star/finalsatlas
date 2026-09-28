@@ -188,8 +188,6 @@ export default function ArenaPage() {
 
   async function submitCurrentRound() {
     if (complete !== roundGames.length || !roundGames.length || roundSubmitted) return;
-    const roundLock = Math.min(...roundGames.map(game => Date.parse(game.tipoff) - 120_000));
-    if (now === null || now >= roundLock) { setNow(Date.now() + offset.current); setMessage("The submission window for this round has closed."); return; }
     setSubmittingRound(true);
     try {
       if (account) {
@@ -300,7 +298,7 @@ export default function ArenaPage() {
               </div>;
             })}</div>
             <p className={styles.status}>{complete} / {roundGames.length} selected · {openCount} games open · {saved ? account ? "Saved to account" : "Saved on this device" : "Saving or unavailable"}</p>
-            <div className={styles.submitBar}><span>{roundSubmitted ? "Week 2 picks are locked." : "Review your picks, then submit to lock this round."}</span><button className={styles.submitButton} type="button" disabled={roundSubmitted || submittingRound || !saved || complete !== roundGames.length || now === null || now >= Math.min(...roundGames.map(game => Date.parse(game.tipoff) - 120_000))} onClick={() => void submitCurrentRound()}>{roundSubmitted ? "Picks submitted ✓" : submittingRound ? "Submitting…" : "Submit week 2 picks"}</button></div>
+            <div className={styles.submitBar}><span>{roundSubmitted ? "Week 2 picks are locked." : "Review your picks, then submit to lock this round."}</span><button className={styles.submitButton} type="button" disabled={roundSubmitted || submittingRound || !saved || complete !== roundGames.length || now === null} onClick={() => void submitCurrentRound()}>{roundSubmitted ? "Picks submitted ✓" : submittingRound ? "Submitting…" : "Submit week 2 picks"}</button></div>
           </div>
         </article>
         <aside className={styles.seasonCard}>
