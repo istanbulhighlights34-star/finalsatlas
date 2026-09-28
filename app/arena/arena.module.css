@@ -739,3 +739,39 @@
 .bingoSlotLive{background:#27231a;box-shadow:inset 0 -3px 0 #ffb629}.bingoSlotLive>em{background:#ffb629;color:#090909}
 .bingoSlotLost{background:#121212;color:#777;box-shadow:inset 0 -3px 0 #3b3b3b}.bingoSlotLost>em{border:1px solid #444;color:#777}
 @media(max-width:760px){.bingoSlotWon,.bingoSlotLive,.bingoSlotLost{min-height:78px}}
+
+
+/* Atlas Bingo fixture board and shared circle cards */
+.bingoFixtures { margin-bottom:22px; border:1px solid #3f493d; background:#121712; }
+.bingoFixturesHead { display:flex; justify-content:space-between; align-items:flex-end; gap:20px; padding:22px 24px; border-bottom:1px solid #3f493d; }
+.bingoFixturesHead h3 { margin:8px 0 0; color:#f5f3eb; font:700 clamp(24px,3vw,36px)/.95 Arial,sans-serif; letter-spacing:-.05em; }
+.bingoFixturesHead > strong { color:#98a192; font:700 10px Arial,sans-serif; letter-spacing:.1em; }
+.bingoFixtureList { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.bingoFixture { position:relative; min-width:0; padding:16px 18px; border-right:1px solid #30382f; border-bottom:1px solid #30382f; }
+.bingoFixture:nth-child(2n) { border-right:0; }
+.bingoFixtureMeta { display:flex; justify-content:space-between; gap:12px; color:#818b7e; font:700 9px Arial,sans-serif; letter-spacing:.08em; text-transform:uppercase; }
+.bingoFixtureTeams { display:grid; grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr); align-items:center; gap:10px; margin-top:14px; }
+.bingoFixtureTeams > span { display:flex; align-items:center; gap:8px; min-width:0; }
+.bingoFixtureTeams > span:last-child { flex-direction:row-reverse; text-align:right; }
+.bingoFixtureTeams img { width:28px; height:28px; object-fit:contain; flex:0 0 28px; }
+.bingoFixtureTeams strong { min-width:0; color:#eef2e9; font:700 12px/1.2 Arial,sans-serif; overflow-wrap:anywhere; }
+.bingoFixtureTeams em { color:#d5ff3f; text-align:center; font:700 11px Arial,sans-serif; font-style:normal; }
+.fixtureOpen,.fixtureFinal,.fixtureLive { display:block; margin-top:12px; color:#7e887b; font:700 8px Arial,sans-serif; letter-spacing:.12em; }
+.fixtureLive { color:#d5ff3f; }
+.fixtureFinal { color:#bbc2b6; }
+.miniBingoRow > span { position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 8px; align-items:center; }
+.miniBingoRow > span b { min-width:0; font:700 11px/1.15 Arial,sans-serif; overflow-wrap:anywhere; }
+.miniBingoRow > span small { grid-column:1; color:#778174; font:8px/1.2 Arial,sans-serif; }
+.miniBingoRow > span em { grid-column:2; grid-row:1/3; color:#788176; font:700 8px Arial,sans-serif; font-style:normal; }
+.miniBingoRow > .miniWon { border-color:#d5ff3f; background:#d5ff3f; color:#101210; }
+.miniBingoRow > .miniWon small,.miniBingoRow > .miniWon em { color:#334018; }
+.miniBingoRow > .miniLive { border-color:#d5ff3f; box-shadow:inset 0 0 0 1px rgba(213,255,63,.35); }
+.miniBingoRow > .miniLive em { color:#d5ff3f; }
+.miniBingoRow > .miniLost { opacity:.48; }
+@media (max-width:720px) {
+  .bingoFixturesHead { align-items:flex-start; flex-direction:column; padding:18px; }
+  .bingoFixtureList { grid-template-columns:1fr; }
+  .bingoFixture,.bingoFixture:nth-child(2n) { border-right:0; }
+  .bingoFixtureTeams { grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr); gap:6px; }
+  .bingoFixtureTeams img { width:24px; height:24px; flex-basis:24px; }
+}
