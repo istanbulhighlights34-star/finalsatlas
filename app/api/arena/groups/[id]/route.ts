@@ -47,5 +47,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     return { id: m.id, name: m.nickname || `Player ${String(m.id).slice(0, 6)}`, points, picks: [...byKey.keys()].filter(k => k.startsWith("game:")).length, settled };
   });
   scores.sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
-  return Response.json({ name: access[0].name, standings: scores, scoredGames: results.length, totalGames: fixtures.length }, { headers: { "Cache-Control": "no-store" } });
+  const lockedCards = members.map(m => {
+    const row = picks.find(p => p.user_id === m.id && p.key === "bingoCard:week-1");
+    if (!row) return null;
+    try { return { id: m.id, name: m.nickname || `Player ${String(m.id).slice(0, 6)}`, card: JSON.parse(String(row.selection)) }; }
+    catch { return null; }
+  });
+  const bingoCards = lockedCards.every(Boolean) ? lockedCards : [];
+  return Response.json({ name: access[0].name, standings: scores, bingoCards, bingoReady: lockedCards.filter(Boolean).length, bingoPlayers: members.length, scoredGames: results.length, totalGames: fixtures.length }, { headers: { "Cache-Control": "no-store" } });
 }
