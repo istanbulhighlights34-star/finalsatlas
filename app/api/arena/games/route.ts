@@ -19,9 +19,32 @@ export async function GET() {
     // Keep the free daily quota safe while the page can poll more frequently.
     next: { revalidate: 1200 },
   });
-  if (!response.ok) return NextResponse.json({ available: false, error: "Basketball provider request failed." }, { status: 502 });
+  if (!response.ok) {
+    console.error("API-Sports basketball HTTP failure", { status: response.status });
+    return NextResponse.json({ available: false, error: "Basketball provider request failed.", diagnostic: "UPSTREAM_HTTP_ERROR" }, { status: 502 });
+  }
 
-  const payload = await response.json() as { response?: Array<any> };
+  let payload: { response?: Array<any>; errors?: Record<string, unknown> };
+  try {
+    payload = await response.json();
+  } catch {
+    console.error("API-Sports basketball response was not valid JSON");
+    return NextResponse.json({ available: false, error: "Basketball provider returned an unreadable response.", diagnostic: "UPSTREAM_INVALID_JSON" }, { status: 502 });
+  }
+
+  const providerErrors = payload.errors && typeof payload.errors === "object"
+    ? Object.keys(payload.errors)
+    : [];
+  if (providerErrors.length > 0) {
+    // Keep error values in server logs only; never send provider details or credentials to clients.
+    console.error("API-Sports basketball provider errors", { fields: providerErrors });
+    return NextResponse.json({
+      available: false,
+      error: "Basketball provider rejected the request.",
+      diagnostic: "UPSTREAM_API_ERROR",
+      providerErrorFields: providerErrors,
+    }, { status: 502 });
+  }
   const allGames = (payload.response || []).map((game) => ({
     id: String(game.id),
     home: game.teams?.home?.name || "Home",
@@ -58,5 +81,5 @@ export async function GET() {
     .sort((a, b) => Math.max(...b.map((game) => Date.parse(game.tipoff))) - Math.max(...a.map((game) => Date.parse(game.tipoff))))[0];
 
   const games = selected || [];
-  return NextResponse.json({ available: true, games, provider: "API-Sports", updatedAt: new Date().toISOString(), leagueId: EUROLEAGUE_ID, season: SEASON });
+  return NextResponse.json({ available: true, games, provider: "API-Sports", providerGameCount: allGames.length, updatedAt: new Date().toISOString(), leagueId: EUROLEAGUE_ID, season: SEASON });
 }
