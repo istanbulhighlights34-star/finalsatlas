@@ -38,6 +38,13 @@ const formatTime = (iso: string) => new Intl.DateTimeFormat(undefined, {
   weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZoneName: "short",
 }).format(new Date(iso));
 
+const bingoTiers = [
+  { id: "elite", label: "TOP TIER", limit: 3, points: 10, teams: ["Manchester City", "Bayern Munich", "Paris Saint-Germain", "Real Madrid", "Barcelona", "Inter"] },
+  { id: "middle", label: "CHALLENGERS", limit: 4, points: 20, teams: ["Newcastle", "Başakşehir", "Hoffenheim", "Real Sociedad", "Real Betis", "Atalanta"] },
+  { id: "outsider", label: "OUTSIDERS", limit: 3, points: 30, teams: ["Çorum FK", "Gaziantep", "Angers", "Crystal Palace", "Lecce", "St. Pauli"] },
+] as const;
+type BingoTier = typeof bingoTiers[number]["id"];
+
 export default function ArenaPage() {
   const [now, setNow] = useState<number | null>(null);
   const [games, setGames] = useState<Game[]>(initialGames);
@@ -56,6 +63,9 @@ export default function ArenaPage() {
   const [footballCompetition, setFootballCompetition] = useState<"leagues" | "cups">("leagues");
   const [footballLeague, setFootballLeague] = useState("Süper Lig");
   const [footballCup, setFootballCup] = useState("Champions League");
+  const [footballGame, setFootballGame] = useState<"picks" | "bingo">("picks");
+  const [bingoPicks, setBingoPicks] = useState<Record<BingoTier, string[]>>({ elite: [], middle: [], outsider: [] });
+  const [bingoSaved, setBingoSaved] = useState(false);
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const [groupName, setGroupName] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
@@ -201,6 +211,19 @@ export default function ArenaPage() {
   const week2BonusTeams = getTopScoringTeams(roundGames);
   const timeZone = now === null ? "Your local time" : new Intl.DateTimeFormat(undefined, { timeZoneName: "short" }).formatToParts(new Date(now)).find((part) => part.type === "timeZoneName")?.value || "Local time";
 
+  function toggleBingoTeam(tier: BingoTier, team: string, limit: number) {
+    setBingoSaved(false);
+    setBingoPicks(previous => {
+      const selected = previous[tier];
+      if (selected.includes(team)) return { ...previous, [tier]: selected.filter(value => value !== team) };
+      if (selected.length >= limit) return previous;
+      return { ...previous, [tier]: [...selected, team] };
+    });
+  }
+
+  const bingoComplete = bingoTiers.every(tier => bingoPicks[tier.id].length === tier.limit);
+  const bingoTotal = bingoTiers.reduce((total, tier) => total + (bingoPicks[tier.id].length === tier.limit ? tier.points : 0), 0);
+
   async function submitCurrentRound() {
     if (complete !== roundGames.length || !roundGames.length) return;
     setSubmittingRound(true);
@@ -293,7 +316,11 @@ export default function ArenaPage() {
           <button type="button" role="tab" aria-selected={footballCompetition === "leagues"} className={footballCompetition === "leagues" ? styles.footballModeActive : styles.footballMode} onClick={() => setFootballCompetition("leagues")}><span>01</span><strong>Domestic Leagues</strong><small>Weekly league fixtures</small></button>
           <button type="button" role="tab" aria-selected={footballCompetition === "cups"} className={footballCompetition === "cups" ? styles.footballModeActive : styles.footballMode} onClick={() => setFootballCompetition("cups")}><span>02</span><strong>European Cups</strong><small>Continental competitions</small></button>
         </div>
-        <div className={styles.footballSelection}>
+        <div className={styles.footballGameModes} role="tablist" aria-label="Football game mode">
+          <button type="button" role="tab" aria-selected={footballGame === "picks"} className={footballGame === "picks" ? styles.footballGameActive : styles.footballGame} onClick={() => setFootballGame("picks")}><span>01</span><strong>Score Picks</strong><small>Predict match results</small></button>
+          <button type="button" role="tab" aria-selected={footballGame === "bingo"} className={footballGame === "bingo" ? styles.footballGameActive : styles.footballGame} onClick={() => setFootballGame("bingo")}><span>02</span><strong>Atlas Bingo</strong><small>Build a 10-team card</small></button>
+        </div>
+        {footballGame === "picks" ? <div className={styles.footballSelection}>
           <div className={styles.footballChoiceList} aria-label={footballCompetition === "leagues" ? "Select a domestic league" : "Select a European cup"}>
             {(footballCompetition === "leagues" ? ["Süper Lig", "Premier League", "Bundesliga", "La Liga", "Ligue 1"] : ["Champions League", "Europa League", "Conference League"]).map((name) => {
               const selected = footballCompetition === "leagues" ? footballLeague === name : footballCup === name;
@@ -306,7 +333,24 @@ export default function ArenaPage() {
             <p>We’re preparing the football schedule and prediction room for this competition. Your football picks and standings will stay separate from EuroLeague.</p>
             <div className={styles.emptySportMeta}><span>COMPETITION</span><strong>{footballCompetition === "leagues" ? "DOMESTIC LEAGUE" : "EUROPEAN CUP"}</strong><span>STATUS</span><strong>FIXTURE FEED IN PREPARATION</strong></div>
           </div>
-        </div>
+        </div> : <div className={styles.bingoBuilder}>
+          <div className={styles.bingoIntro}>
+            <span className={styles.pulseKicker}>WEEKLY 10-TEAM CARD</span>
+            <h3>Build your Atlas Bingo</h3>
+            <p>Choose 3 favourites, 4 challengers and 3 outsiders. A winning team lights up your card. Complete rows for 10, 20 and 30 points — a full card is 60.</p>
+            <div className={styles.bingoScore}><span>CURRENT CARD</span><strong>{bingoPicks.elite.length + bingoPicks.middle.length + bingoPicks.outsider.length}<small> / 10 teams</small></strong><em>{bingoTotal} / 60 points ready</em></div>
+          </div>
+          <div className={styles.bingoCard}>
+            {bingoTiers.map((tier, index) => <section className={styles.bingoRow} key={tier.id}>
+              <div className={styles.bingoRowHead}><span>ROW 0{index + 1} · {tier.label}</span><strong>+{tier.points} PTS</strong><small>{bingoPicks[tier.id].length} / {tier.limit}</small></div>
+              <div className={styles.bingoTeams}>{tier.teams.map(team => {
+                const selected = bingoPicks[tier.id].includes(team);
+                return <button type="button" key={team} aria-pressed={selected} disabled={!selected && bingoPicks[tier.id].length >= tier.limit} className={selected ? styles.bingoTeamSelected : styles.bingoTeam} onClick={() => toggleBingoTeam(tier.id, team, tier.limit)}><span>{team.slice(0, 2).toUpperCase()}</span><strong>{team}</strong><em>{selected ? "ON CARD" : "SELECT"}</em></button>;
+              })}</div>
+            </section>)}
+            <div className={styles.bingoSave}><div><strong>{bingoComplete ? "Your 10-team card is ready." : "Complete all three rows to save."}</strong><span>Each team is tied to its listed match for the week. The card locks two minutes before the first kick-off.</span></div><button type="button" disabled={!bingoComplete} onClick={() => setBingoSaved(true)}>{bingoSaved ? "CARD SAVED" : "SAVE BINGO CARD"}</button></div>
+          </div>
+        </div>}
       </section>}
       <div className={selectedSport === "football" ? styles.hiddenSportContent : ""}>
       <section id="matchroom" className={styles.heroGrid} aria-label="EuroLeague Round 2 predictions">
