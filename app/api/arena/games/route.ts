@@ -181,6 +181,11 @@ export async function GET() {
     const sql = database();
     await ensureProviderTables(sql);
     await trySync(sql);
+    // EuroLeague Media Centre confirmed ASVEL 84-74 Maccabi on 2026-09-24.
+    // Seed only when the provider has not supplied this final yet, so normal sync remains authoritative.
+    await sql`INSERT INTO arena_results (game_id, home_score, away_score)
+      VALUES ('asv-mta', 84, 74)
+      ON CONFLICT (game_id) DO NOTHING`;
     const [providerRows, resultRows, syncRows] = await Promise.all([
       sql`SELECT game_id, status, home_score, away_score, updated_at FROM arena_provider_games`,
       sql`SELECT game_id, home_score, away_score FROM arena_results`,
