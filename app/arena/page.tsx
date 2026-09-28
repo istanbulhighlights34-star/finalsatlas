@@ -179,8 +179,11 @@ export default function ArenaPage() {
   }
 
   const bonusOpen = now !== null && now < firstLock;
-  const complete = games.filter((game) => picks.games[game.id]).length;
-  const openCount = now === null ? 0 : games.filter((game) => now < Date.parse(game.tipoff) - 120_000).length;
+  const roundGames = games.filter(game => (game.round || (game.id.startsWith("r2-") ? 2 : 1)) === 2);
+  const historyGames = games.filter(game => (game.round || (game.id.startsWith("r2-") ? 2 : 1)) === 1);
+  const complete = roundGames.filter((game) => picks.games[game.id]).length;
+  const openCount = now === null ? 0 : roundGames.filter((game) => now < Date.parse(game.tipoff) - 120_000).length;
+  const roundSubmitted = submittedRounds.includes(2);
   const timeZone = now === null ? "Your local time" : new Intl.DateTimeFormat(undefined, { timeZoneName: "short" }).formatToParts(new Date(now)).find((part) => part.type === "timeZoneName")?.value || "Local time";
 
   async function submitCurrentRound() {
