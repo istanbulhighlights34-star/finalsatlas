@@ -46,6 +46,10 @@ const bingoTiers = [
   { id: "outsider", label: "OUTSIDERS", limit: 3, points: 30, teams: ["Çorum FK", "Gaziantep", "Angers", "Crystal Palace", "Lecce", "St. Pauli"] },
 ] as const;
 type BingoTier = typeof bingoTiers[number]["id"];
+const sharedCardPreview: { id: string; name: string; card: Record<BingoTier, string[]> }[] = [
+  { id: "preview-1", name: "Mert", card: { elite: ["Manchester City", "Real Madrid", "Inter"], middle: ["Newcastle", "Real Betis", "Atalanta", "Hoffenheim"], outsider: ["Gaziantep", "Crystal Palace", "Lecce"] } },
+  { id: "preview-2", name: "Deniz", card: { elite: ["Bayern Munich", "Barcelona", "Paris Saint-Germain"], middle: ["Başakşehir", "Real Sociedad", "Newcastle", "Atalanta"], outsider: ["Çorum FK", "Angers", "St. Pauli"] } },
+];
 
 export default function ArenaPage() {
   const [now, setNow] = useState<number | null>(null);
@@ -462,6 +466,11 @@ export default function ArenaPage() {
               </section>)}
               <div className={styles.bingoSave}><div><strong>{bingoSaved ? "Your card is locked." : bingoComplete ? "Your 10-team card is ready." : "Complete all three rows to lock your card."}</strong><span>Cards stay private until every player in the circle has locked a complete card.</span></div><button type="button" disabled={!bingoComplete || bingoSaved || !bingoWeek} onClick={() => void lockBingoCard()}>{bingoSaved ? "CARD LOCKED" : "LOCK MY CARD"}</button></div>
             </div>
+            {!selectedGroup && <section className={styles.communityCards} aria-label="Shared card preview">
+              <div className={styles.communityHead}><div><span className={styles.pulseKicker}>SHARED VIEW PREVIEW</span><h3>How your circle will look</h3></div><strong>OPENS WHEN ALL CARDS LOCK</strong></div>
+              <p className={styles.communityEmpty}>This preview shows the common room layout. In a real circle, every member’s locked card appears here together with live match states and weekly points.</p>
+              <div className={styles.communityGrid}>{sharedCardPreview.map(player => <article className={styles.miniBingo} key={player.id}><header><strong>{player.name}</strong><span>DEMO CARD</span></header>{bingoTiers.map(tier => <div className={styles.miniBingoRow} key={tier.id}>{player.card[tier.id].map((team, index) => <span key={team} className={index === 0 ? styles.miniWon : index === 1 ? styles.miniLive : ""}><b>{team}</b><small>{index === 0 ? "Won this week" : index === 1 ? "Match in progress" : "Scheduled"}</small><em>{index === 0 ? "WIN" : index === 1 ? "LIVE" : "—"}</em></span>)}</div>)}</article>)}</div>
+            </section>}
             {selectedGroup && <section className={styles.communityCards}>
               <div className={styles.communityHead}><div><span className={styles.pulseKicker}>CIRCLE CARDS</span><h3>{bingoCards.length ? "The cards are open" : "Waiting for every player"}</h3></div><strong>{bingoReady} / {bingoPlayers} LOCKED</strong></div>
               {bingoCards.length ? <div className={styles.communityGrid}>{bingoCards.map(player => <article className={styles.miniBingo} key={player.id}><header><strong>{player.name}</strong><span>{bingoWeek || "CURRENT WEEK"}</span></header>{bingoTiers.map(tier => <div className={styles.miniBingoRow} key={tier.id}>{player.card[tier.id].map(team => { const result = bingoTeamResults[team]; return <span key={team} className={result?.won === true ? styles.miniWon : result?.live ? styles.miniLive : result?.won === false ? styles.miniLost : ""}><b>{team}</b><small>{result?.opponent ? `vs ${result.opponent}` : "Scheduled"}</small><em>{result?.won === true ? "WIN" : result?.live ? "LIVE" : result?.won === false ? "FT" : "—"}</em></span>; })}</div>)}</article>)}</div> : <p className={styles.communityEmpty}>No card is revealed yet. As soon as every member locks a complete card, all cards appear here together.</p>}
