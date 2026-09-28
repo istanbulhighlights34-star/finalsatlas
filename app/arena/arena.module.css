@@ -610,3 +610,41 @@
  .footballComing h3 { font-size:48px; }
  .footballSeason { font-size:8px; }
 }
+
+
+/* Atlas Bingo */
+.footballGameModes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid #292929;border-bottom:0}
+.footballGame,.footballGameActive{min-height:112px;padding:20px 24px;border:0;border-right:1px solid #292929;background:#111;color:#fff;text-align:left;display:grid;grid-template-columns:42px 1fr;grid-template-rows:auto auto;gap:5px 12px;cursor:pointer}
+.footballGame:last-child,.footballGameActive:last-child{border-right:0}
+.footballGame span,.footballGameActive span{grid-row:1/3;color:#777;font-size:12px;font-weight:800}
+.footballGame strong,.footballGameActive strong{font-size:22px;letter-spacing:-.04em}
+.footballGame small,.footballGameActive small{color:#777;font-size:13px}
+.footballGameActive{background:#d7ff3f;color:#090909}
+.footballGameActive span,.footballGameActive small{color:#343a17}
+.bingoBuilder{display:grid;grid-template-columns:minmax(260px,.55fr) minmax(0,1.45fr);border:1px solid #292929;background:#0e0e0e}
+.bingoIntro{padding:34px;border-right:1px solid #292929}
+.bingoIntro h3{margin:14px 0 18px;font-size:clamp(32px,4vw,58px);line-height:.92;letter-spacing:-.06em}
+.bingoIntro p{margin:0;color:#9b9a94;font-size:16px;line-height:1.55}
+.bingoScore{margin-top:32px;padding-top:24px;border-top:1px solid #292929;display:flex;flex-direction:column;gap:7px}
+.bingoScore>span{color:#d7ff3f;font-size:11px;font-weight:800;letter-spacing:.12em}
+.bingoScore strong{font-size:40px;line-height:1}
+.bingoScore strong small{font-size:15px;color:#888}
+.bingoScore em{color:#aaa;font-size:13px;font-style:normal}
+.bingoCard{padding:18px}
+.bingoRow{border:1px solid #303030;margin-bottom:12px;background:#141414}
+.bingoRowHead{display:grid;grid-template-columns:1fr auto auto;gap:20px;align-items:center;padding:13px 16px;border-bottom:1px solid #303030;font-size:11px;letter-spacing:.09em}
+.bingoRowHead>span{font-weight:800}.bingoRowHead>strong{color:#d7ff3f}.bingoRowHead>small{color:#777}
+.bingoTeams{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:#303030}
+.bingoTeam,.bingoTeamSelected{min-height:86px;padding:14px;border:0;background:#171717;color:#fff;display:grid;grid-template-columns:36px 1fr;grid-template-rows:1fr auto;align-items:center;gap:5px 10px;text-align:left;cursor:pointer}
+.bingoTeam>span,.bingoTeamSelected>span{grid-row:1/3;width:34px;height:34px;border:1px solid #3a3a3a;display:grid;place-items:center;font-size:10px;font-weight:900}
+.bingoTeam strong,.bingoTeamSelected strong{font-size:14px;line-height:1.1}
+.bingoTeam em,.bingoTeamSelected em{font-size:9px;font-style:normal;letter-spacing:.1em;color:#777}
+.bingoTeam:hover{background:#202020}.bingoTeam:disabled{opacity:.34;cursor:not-allowed}
+.bingoTeamSelected{background:#d7ff3f;color:#090909}
+.bingoTeamSelected>span{border-color:#090909}.bingoTeamSelected em{color:#353918}
+.bingoSave{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:18px 4px 2px}
+.bingoSave>div{display:flex;flex-direction:column;gap:5px}.bingoSave strong{font-size:15px}.bingoSave span{color:#85847f;font-size:12px}
+.bingoSave button{flex:0 0 auto;border:0;background:#d7ff3f;color:#090909;padding:14px 18px;font-size:11px;font-weight:900;letter-spacing:.08em;cursor:pointer}
+.bingoSave button:disabled{background:#2b2b2b;color:#666;cursor:not-allowed}
+@media(max-width:900px){.bingoBuilder{grid-template-columns:1fr}.bingoIntro{border-right:0;border-bottom:1px solid #292929}.bingoTeams{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.footballGameModes{grid-template-columns:1fr}.footballGame,.footballGameActive{border-right:0;border-bottom:1px solid #292929;min-height:92px;padding:16px 18px}.bingoIntro{padding:24px 18px}.bingoCard{padding:10px}.bingoTeams{grid-template-columns:1fr}.bingoTeam,.bingoTeamSelected{min-height:72px}.bingoRowHead{grid-template-columns:1fr auto;gap:6px}.bingoRowHead small{grid-column:1/3}.bingoSave{align-items:stretch;flex-direction:column}.bingoSave button{width:100%}}
