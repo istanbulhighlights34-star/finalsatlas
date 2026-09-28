@@ -56,7 +56,9 @@ async function ensureTables(sql: ReturnType<typeof database>) {
 }
 
 function weekWindow() {
-  const now = new Date();
+  // The Arena week follows Europe/Istanbul. Shifting by UTC+3 before reading
+  // UTC fields keeps the Tuesday rollover stable without depending on server locale.
+  const now = new Date(Date.now() + 3 * 60 * 60 * 1000);
   const day = now.getUTCDay();
   // League Bingo opens on Tuesday, covers Friday through the following Monday,
   // then archives when the next Tuesday card opens.
