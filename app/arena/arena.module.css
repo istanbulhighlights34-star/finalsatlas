@@ -653,3 +653,28 @@
 .bingoRules>span{display:flex;justify-content:space-between;gap:12px;padding:11px 12px;background:#151515}
 .bingoRules strong{color:#d7ff3f;font-size:10px;letter-spacing:.08em}
 .bingoRules em{color:#aaa;font-size:11px;font-style:normal;text-align:right}
+
+.bingoTicket{border:2px solid #d7ff3f;background:#0b0b0b}
+.bingoTicketTop{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;background:#d7ff3f;color:#090909;font-size:10px;font-weight:900;letter-spacing:.1em}
+.bingoSlots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:#303030}
+.bingoRow:first-of-type .bingoSlots,.bingoRow:last-of-type .bingoSlots{grid-template-columns:repeat(3,minmax(0,1fr))}
+.bingoSlot,.bingoSlotSelected{min-height:104px;padding:12px;background:#151515;display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 1fr;gap:10px;color:#fff}
+.bingoSlot>span,.bingoSlotSelected>span{font-size:9px;color:#65655f;font-weight:800}
+.bingoSlot>em,.bingoSlotSelected>em{font-size:10px;font-style:normal;width:28px;height:28px;border:1px solid #3b3b3b;display:grid;place-items:center}
+.bingoSlot select,.bingoSlotSelected select{grid-column:1/3;width:100%;min-width:0;border:0;border-top:1px solid #323232;background:transparent;color:inherit;padding:12px 0 2px;font:700 13px/1.2 inherit;outline:none}
+.bingoSlot select option,.bingoSlotSelected select option{background:#171717;color:#fff}
+.bingoSlotSelected{background:#20251a;box-shadow:inset 0 -3px 0 #d7ff3f}
+.bingoSlotSelected>em{background:#d7ff3f;border-color:#d7ff3f;color:#090909;font-weight:900}
+.bingoSlotSelected select:disabled{opacity:1;-webkit-text-fill-color:#fff}
+.communityCards{margin-top:24px;border:1px solid #2d2d2d;background:#101010}
+.communityHead{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;padding:24px;border-bottom:1px solid #2d2d2d}
+.communityHead h3{margin:6px 0 0;font-size:28px;letter-spacing:-.04em}
+.communityHead>strong{color:#d7ff3f;font-size:11px;letter-spacing:.1em}
+.communityGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:18px}
+.miniBingo{border:1px solid #3a3a3a;background:#0b0b0b}
+.miniBingo header{display:flex;justify-content:space-between;padding:12px 14px;background:#d7ff3f;color:#090909;font-size:11px}
+.miniBingoRow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:#333;border-top:1px solid #333}
+.miniBingoRow:first-of-type,.miniBingoRow:last-of-type{grid-template-columns:repeat(3,minmax(0,1fr))}
+.miniBingoRow span{min-height:58px;padding:8px;background:#171717;display:grid;place-items:center;text-align:center;font-size:11px;font-weight:700}
+.communityEmpty{margin:0;padding:32px 24px;color:#888;font-size:14px;line-height:1.5}
+@media(max-width:760px){.bingoSlots,.bingoRow:first-of-type .bingoSlots,.bingoRow:last-of-type .bingoSlots{grid-template-columns:1fr}.bingoSlot,.bingoSlotSelected{min-height:78px}.communityGrid{grid-template-columns:1fr}.communityHead{align-items:flex-start;flex-direction:column}.miniBingoRow span{font-size:9px;min-height:52px}}
