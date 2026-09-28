@@ -54,5 +54,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     catch { return null; }
   });
   const bingoCards = lockedCards.every(Boolean) ? lockedCards : [];
-  return Response.json({ name: access[0].name, standings: scores, bingoCards, bingoReady: lockedCards.filter(Boolean).length, bingoPlayers: members.length, scoredGames: results.length, totalGames: fixtures.length }, { headers: { "Cache-Control": "no-store" } });
+  const bingoStandings = members.map(m => {
+    const locked = lockedCards.find(card => card?.id === m.id);
+    return { id: m.id, name: m.nickname || `Player ${String(m.id).slice(0, 6)}`, locked: !!locked, firstChinko: 0, secondChinko: 0, bingo: 0, weeklyTotal: 0 };
+  }).sort((a, b) => b.weeklyTotal - a.weeklyTotal || a.name.localeCompare(b.name));
+  return Response.json({ name: access[0].name, standings: scores, bingoCards, bingoStandings, bingoReady: lockedCards.filter(Boolean).length, bingoPlayers: members.length, scoredGames: results.length, totalGames: fixtures.length }, { headers: { "Cache-Control": "no-store" } });
 }
