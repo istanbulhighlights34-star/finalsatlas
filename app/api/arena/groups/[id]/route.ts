@@ -7,8 +7,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const { id } = await context.params;
   const sql = database();
   const now = new Date();
-  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - ((now.getUTCDay() + 6) % 7)));
-  const bingoWeekKey = monday.toISOString().slice(0, 10);
+  const tuesday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - ((now.getUTCDay() + 5) % 7)));
+  const bingoWeekKey = tuesday.toISOString().slice(0, 10);
   const bingoPickKey = `bingoCard:${bingoWeekKey}`;
   const access = await sql`SELECT g.name FROM arena_groups g JOIN arena_members m ON m.group_id = g.id WHERE g.id = ${id} AND m.user_id = ${user.id} LIMIT 1`;
   if (!access.length) return jsonError("Group not found", 404);
@@ -21,7 +21,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     sql`SELECT p.user_id, p.key, p.selection FROM arena_picks p JOIN arena_members m ON m.user_id = p.user_id WHERE m.group_id = ${id}`,
     sql`SELECT game_id, home_score, away_score FROM arena_results`,
     sql`SELECT champion, final_four FROM arena_season_results WHERE id = 1`,
-    sql`SELECT team, won, status FROM arena_bingo_team_results WHERE week_key = to_char(date_trunc('week', now()), 'YYYY-MM-DD')`,
+    sql`SELECT team, won, status FROM arena_bingo_team_results WHERE week_key = ${bingoWeekKey}`,
   ]);
   const resultMap = new Map(results.map(r => [r.game_id, r]));
   const scores = members.map(m => {
