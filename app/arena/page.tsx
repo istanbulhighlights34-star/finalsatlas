@@ -66,6 +66,9 @@ export default function ArenaPage() {
   const [footballGame, setFootballGame] = useState<"picks" | "bingo">("picks");
   const [bingoPicks, setBingoPicks] = useState<Record<BingoTier, string[]>>({ elite: [], middle: [], outsider: [] });
   const [bingoSaved, setBingoSaved] = useState(false);
+  const [bingoCards, setBingoCards] = useState<{ id: string; name: string; card: Record<BingoTier, string[]> }[]>([]);
+  const [bingoReady, setBingoReady] = useState(0);
+  const [bingoPlayers, setBingoPlayers] = useState(0);
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const [groupName, setGroupName] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
@@ -140,6 +143,13 @@ export default function ArenaPage() {
           const values = (await savedPicks.json()).picks as Record<string, string>;
           setPicks({ games: Object.fromEntries(Object.entries(values).filter(([key]) => key.startsWith("game:")).map(([key, value]) => [key.slice(5), value as "1" | "2"])), topScorer: values["topScorer:1"] || values.topScorer || "", roundTopScorers: { "1": values["topScorer:1"] || values.topScorer || "", "2": values["topScorer:2"] || "" }, champion: values.champion || "", finalFour: JSON.parse(values.finalFour || "[]") });
           setSubmittedRounds([1, 2].filter(round => values[`roundSubmitted:${round}`] === "submitted"));
+          if (values["bingoCard:week-1"]) {
+            try {
+              const card = JSON.parse(values["bingoCard:week-1"]) as Record<BingoTier, string[]>;
+              setBingoPicks(card);
+              setBingoSaved(true);
+            } catch { /* ignore malformed historical card */ }
+          }
         }
         if (membership.ok) setGroups((await membership.json()).groups);
         const invite = inviteFromUrl || localStorage.getItem("finalsatlas-pending-invite");
@@ -167,7 +177,13 @@ export default function ArenaPage() {
     let active = true;
     async function refresh() {
       const response = await fetch(`/api/arena/groups/${selectedGroup}`, { cache: "no-store" });
-      if (response.ok && active) setStandings((await response.json()).standings);
+      if (response.ok && active) {
+        const data = await response.json();
+        setStandings(data.standings || []);
+        setBingoCards(data.bingoCards || []);
+        setBingoReady(data.bingoReady || 0);
+        setBingoPlayers(data.bingoPlayers || 0);
+      }
     }
     void refresh();
     const interval = setInterval(() => { void refresh(); }, 60_000);
@@ -211,17 +227,30 @@ export default function ArenaPage() {
   const week2BonusTeams = getTopScoringTeams(roundGames);
   const timeZone = now === null ? "Your local time" : new Intl.DateTimeFormat(undefined, { timeZoneName: "short" }).formatToParts(new Date(now)).find((part) => part.type === "timeZoneName")?.value || "Local time";
 
-  function toggleBingoTeam(tier: BingoTier, team: string, limit: number) {
-    setBingoSaved(false);
+  function updateBingoSlot(tier: BingoTier, index: number, team: string) {
+    if (bingoSaved) return;
     setBingoPicks(previous => {
-      const selected = previous[tier];
-      if (selected.includes(team)) return { ...previous, [tier]: selected.filter(value => value !== team) };
-      if (selected.length >= limit) return previous;
-      return { ...previous, [tier]: [...selected, team] };
+      const row = [...previous[tier]];
+      while (row.length < bingoTiers.find(item => item.id === tier)!.limit) row.push("");
+      row[index] = team;
+      return { ...previous, [tier]: row.filter((value, position) => value || position < row.length) };
     });
   }
 
-  const bingoComplete = bingoTiers.every(tier => bingoPicks[tier.id].length === tier.limit);
+  async function lockBingoCard() {
+    if (!bingoComplete || bingoSaved) return;
+    if (account) {
+      const response = await fetch("/api/arena/picks", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "bingoCard:week-1", selection: JSON.stringify(bingoPicks) }) });
+      const data = await response.json();
+      if (!response.ok) { setMessage(data.error || "Could not lock Bingo card."); return; }
+    } else {
+      localStorage.setItem("finalsatlas-bingo-week-1", JSON.stringify(bingoPicks));
+    }
+    setBingoSaved(true);
+    setMessage(account ? "Bingo card locked. Group cards open when every player is ready." : "Bingo card locked on this device.");
+  }
+
+  const bingoComplete = bingoTiers.every(tier => bingoPicks[tier.id].length === tier.limit && bingoPicks[tier.id].every(Boolean) && new Set(bingoPicks[tier.id]).size === tier.limit);
 
   async function submitCurrentRound() {
     if (complete !== roundGames.length || !roundGames.length) return;
@@ -341,15 +370,23 @@ export default function ArenaPage() {
             <div className={styles.bingoScore}><span>CURRENT CARD</span><strong>{bingoPicks.elite.length + bingoPicks.middle.length + bingoPicks.outsider.length}<small> / 10 teams</small></strong><em>Maximum weekly score · 60 points</em></div>
           </div>
           <div className={styles.bingoCard}>
-            {bingoTiers.map((tier, index) => <section className={styles.bingoRow} key={tier.id}>
-              <div className={styles.bingoRowHead}><span>ROW 0{index + 1} · {tier.label}</span><strong>CHINKO ROW</strong><small>{bingoPicks[tier.id].length} / {tier.limit}</small></div>
-              <div className={styles.bingoTeams}>{tier.teams.map(team => {
-                const selected = bingoPicks[tier.id].includes(team);
-                return <button type="button" key={team} aria-pressed={selected} disabled={!selected && bingoPicks[tier.id].length >= tier.limit} className={selected ? styles.bingoTeamSelected : styles.bingoTeam} onClick={() => toggleBingoTeam(tier.id, team, tier.limit)}><span>{team.slice(0, 2).toUpperCase()}</span><strong>{team}</strong><em>{selected ? "ON CARD" : "SELECT"}</em></button>;
-              })}</div>
-            </section>)}
-            <div className={styles.bingoSave}><div><strong>{bingoComplete ? "Your 10-team card is ready." : "Complete all three rows to save."}</strong><span>Each team is tied to its listed match for the week. The card locks two minutes before the first kick-off.</span></div><button type="button" disabled={!bingoComplete} onClick={() => setBingoSaved(true)}>{bingoSaved ? "CARD SAVED" : "SAVE BINGO CARD"}</button></div>
-          </div>
+            <div className={styles.bingoTicket}>
+              <div className={styles.bingoTicketTop}><span>FINALS ATLAS · WEEKLY CARD</span><strong>{bingoSaved ? "LOCKED" : "BUILDING"}</strong></div>
+              {bingoTiers.map((tier, index) => <section className={styles.bingoRow} key={tier.id}>
+                <div className={styles.bingoRowHead}><span>ROW 0{index + 1} · {tier.label}</span><strong>CHINKO ROW</strong><small>{bingoPicks[tier.id].filter(Boolean).length} / {tier.limit}</small></div>
+                <div className={styles.bingoSlots}>{Array.from({ length: tier.limit }, (_, slot) => {
+                  const selected = bingoPicks[tier.id][slot] || "";
+                  const used = new Set(bingoPicks[tier.id].filter(Boolean));
+                  return <label className={selected ? styles.bingoSlotSelected : styles.bingoSlot} key={slot}><span>{String(slot + 1).padStart(2, "0")}</span><select aria-label={`${tier.label} team ${slot + 1}`} value={selected} disabled={bingoSaved} onChange={event => updateBingoSlot(tier.id, slot, event.target.value)}><option value="">Choose team</option>{tier.teams.map(team => <option key={team} value={team} disabled={used.has(team) && team !== selected}>{team}</option>)}</select><em>{selected ? selected.slice(0, 2).toUpperCase() : "FA"}</em></label>;
+                })}</div>
+              </section>)}
+              <div className={styles.bingoSave}><div><strong>{bingoSaved ? "Your card is locked." : bingoComplete ? "Your 10-team card is ready." : "Complete all three rows to lock your card."}</strong><span>Cards stay private until every player in the circle has locked a complete card.</span></div><button type="button" disabled={!bingoComplete || bingoSaved} onClick={() => void lockBingoCard()}>{bingoSaved ? "CARD LOCKED" : "LOCK MY CARD"}</button></div>
+            </div>
+            {selectedGroup && <section className={styles.communityCards}>
+              <div className={styles.communityHead}><div><span className={styles.pulseKicker}>CIRCLE CARDS</span><h3>{bingoCards.length ? "The cards are open" : "Waiting for every player"}</h3></div><strong>{bingoReady} / {bingoPlayers} LOCKED</strong></div>
+              {bingoCards.length ? <div className={styles.communityGrid}>{bingoCards.map(player => <article className={styles.miniBingo} key={player.id}><header><strong>{player.name}</strong><span>WEEK 01</span></header>{bingoTiers.map(tier => <div className={styles.miniBingoRow} key={tier.id}>{player.card[tier.id].map(team => <span key={team}>{team}</span>)}</div>)}</article>)}</div> : <p className={styles.communityEmpty}>No card is revealed yet. As soon as every member locks a complete card, all cards appear here together.</p>}
+            </section>}
+          </div></div>
         </div>}
       </section>}
       <div className={selectedSport === "football" ? styles.hiddenSportContent : ""}>
