@@ -83,9 +83,11 @@ export default function ArenaPage() {
   const [bingoWindow, setBingoWindow] = useState<{ from: string; to: string } | null>(null);
   const [bingoWeek, setBingoWeek] = useState("");
   const [accountPickValues, setAccountPickValues] = useState<Record<string, string>>({});
-  const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
+  const [groups, setGroups] = useState<{ id: string; name: string; started_at?: string | null; is_owner?: boolean }[]>([]);
   const [groupName, setGroupName] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
+  const [leagueStatus, setLeagueStatus] = useState<{ startedAt: string | null; pickLockAt: string | null; picksOpen: boolean; canStart: boolean }>({ startedAt: null, pickLockAt: null, picksOpen: true, canStart: false });
+  const [startingLeague, setStartingLeague] = useState(false);
   const [standings, setStandings] = useState<{ name: string; points: number; picks: number }[]>([]);
   const [inviteUrl, setInviteUrl] = useState("");
   const offset = useRef(0);
@@ -229,6 +231,7 @@ export default function ArenaPage() {
       const response = await fetch(`/api/arena/groups/${selectedGroup}`, { cache: "no-store" });
       if (response.ok && active) {
         const data = await response.json();
+        setLeagueStatus({ startedAt: data.startedAt || null, pickLockAt: data.pickLockAt || null, picksOpen: data.picksOpen !== false, canStart: !!data.canStart });
         setStandings(data.standings || []);
         setBingoCards(data.bingoCards || []);
         setBingoReady(data.bingoReady || 0);
@@ -259,7 +262,9 @@ export default function ArenaPage() {
     }
   }
 
-  const bonusOpen = now !== null && now < firstLock;
+  const groupSeasonLock = groups.map(group => group.started_at ? Date.parse(group.started_at) + 7 * 24 * 60 * 60 * 1000 : Infinity).filter(Number.isFinite);
+  const seasonLockAt = groupSeasonLock.length ? Math.min(...groupSeasonLock) : Infinity;
+  const bonusOpen = now !== null && now < seasonLockAt;
   const roundGames = games.filter(game => (game.round || (game.id.startsWith("r2-") ? 2 : 1)) === 2);
   const historyGames = games.filter(game => (game.round || (game.id.startsWith("r2-") ? 2 : 1)) === 1);
   const complete = roundGames.filter((game) => picks.games[game.id]).length;
@@ -355,7 +360,25 @@ export default function ArenaPage() {
           <form className={styles.accountForm} onSubmit={async event => { event.preventDefault(); const response = await fetch("/api/arena/auth", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nickname }) }); setMessage(response.ok ? "Nickname saved." : "Could not save nickname."); }}><label htmlFor="nickname">Your Arena name</label><div className={styles.accountFields}><input id="nickname" maxLength={32} required value={nickname} onChange={event => setNickname(event.target.value)} placeholder="Your nickname" /> <button className={styles.result} type="submit">Save card</button></div></form>
           <form className={styles.accountForm} onSubmit={async event => { event.preventDefault(); const response = await fetch("/api/arena/groups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: groupName }) }); const data = await response.json(); if (response.ok) { setGroups(previous => [data.group, ...previous]); setSelectedGroup(data.group.id); setInviteUrl(data.inviteUrl); setGroupName(""); setMessage("Group created. Share the invitation link with friends."); } else setMessage(data.error); }}><label htmlFor="group-name">Create your circle</label><div className={styles.accountFields}><input id="group-name" maxLength={60} required value={groupName} onChange={event => setGroupName(event.target.value)} placeholder="Circle name" /> <button className={styles.result} type="submit">Create circle</button></div></form>
           {inviteUrl && <p>Circle invite: <input readOnly aria-label="Invitation link" value={inviteUrl} onFocus={event => event.target.select()} style={{ width: "min(100%, 500px)", padding: 10 }} /></p>}
-          {groups.length > 0 && <div className={styles.groupsBlock}><p className={styles.groupsLabel}>Your circles</p><div className={styles.groupChoices}>{groups.map(group => <button key={group.id} className={selectedGroup === group.id ? styles.groupActive : styles.groupChoice} type="button" onClick={() => setSelectedGroup(group.id)} aria-pressed={selectedGroup === group.id}>{group.name}</button>)}</div>{selectedGroup && <div className={styles.standingsWrap}><div className={styles.standingsHeader}><span>RANK / PLAYER</span><span>POINTS</span><span>PICKS</span></div><ol className={styles.standings}>{standings.map((entry, index) => <li key={entry.name}><span className={styles.rank}>{index + 1}</span><span className={styles.player}>{entry.name}</span><strong>{entry.points}</strong><span>{entry.picks}</span></li>)}</ol></div>}</div>}
+          {groups.length > 0 && <div className={styles.groupsBlock}><p className={styles.groupsLabel}>Your circles</p><div className={styles.groupChoices}>{groups.map(group => <button key={group.id} className={selectedGroup === group.id ? styles.groupActive : styles.groupChoice} type="button" onClick={() => setSelectedGroup(group.id)} aria-pressed={selectedGroup === group.id}>{group.name}</button>)}</div>{selectedGroup && <div className={styles.standingsWrap}>
+          <div className={styles.panelHeading}><span>{!leagueStatus.startedAt ? "LEAGUE NOT STARTED" : leagueStatus.picksOpen ? "FIRST WEEK IN PROGRESS" : "SEASON PICKS LOCKED"}</span><span>{leagueStatus.pickLockAt ? new Date(leagueStatus.pickLockAt).toLocaleString() : "Picks stay open"}</span></div>
+          <p className={styles.muted}>{!leagueStatus.startedAt ? "Season picks stay open until the circle owner starts the league. They lock seven days after kickoff." : leagueStatus.picksOpen ? "Season picks remain open during the first week after the league starts." : "The first week has passed. Season picks are now locked; match picks still close two minutes before each match."}</p>
+          {leagueStatus.canStart && <button className={styles.result} type="button" disabled={startingLeague} onClick={async () => {
+            setStartingLeague(true);
+            try {
+              const response = await fetch("/api/arena/groups", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "startLeague", groupId: selectedGroup }) });
+              const data = await response.json();
+              if (!response.ok) setMessage(data.error || "Could not start league.");
+              else {
+                const startedAt = data.startedAt as string;
+                setGroups(previous => previous.map(group => group.id === selectedGroup ? { ...group, started_at: startedAt } : group));
+                setLeagueStatus({ startedAt, pickLockAt: new Date(Date.parse(startedAt) + 7 * 24 * 60 * 60 * 1000).toISOString(), picksOpen: true, canStart: false });
+                setMessage("League started. Season picks will lock in seven days.");
+              }
+            } catch { setMessage("Could not start league."); }
+            finally { setStartingLeague(false); }
+          }}>{startingLeague ? "Starting…" : "Start league"}</button>}
+          <div className={styles.standingsHeader}><span>RANK / PLAYER</span><span>POINTS</span><span>PICKS</span></div><ol className={styles.standings}>{standings.map((entry, index) => <li key={entry.name}><span className={styles.rank}>{index + 1}</span><span className={styles.player}>{entry.name}</span><strong>{entry.points}</strong><span>{entry.picks}</span></li>)}</ol></div>}</div>}
           <button type="button" className={`${styles.result} ${styles.signOut}`} onClick={async () => { await fetch("/api/arena/auth", { method: "DELETE" }); location.reload(); }}>Leave Arena</button>
         </div>}
         {message && <p role="status">{message}</p>}
@@ -522,11 +545,11 @@ export default function ArenaPage() {
       </section>
       <section className={styles.historySection} aria-label="Week 1 results and points"><div className={styles.historyHeading}><div><span className={styles.pulseKicker}>COMPLETED ROUND</span><h2>Week 1 · Results & points</h2></div><span>{historyGames.filter(game => !!game.result).length} / {historyGames.length} results</span></div><div className={styles.historyList}>{historyGames.map(game => { const correct = !!game.result && ((picks.games[game.id] === "1" && game.result.home > game.result.away) || (picks.games[game.id] === "2" && game.result.away > game.result.home)); return <div className={styles.historyRow} key={game.id}><span>{game.home} <i>vs</i> {game.away}</span><strong>{game.result ? `${game.result.home} – ${game.result.away}` : "Result pending"}</strong><em className={game.result ? (correct ? styles.pointsWon : styles.pointsMissed) : ""}>{game.result ? (picks.games[game.id] ? (correct ? "Correct · +2 pts" : "Incorrect · 0 pts") : "No pick · 0 pts") : "Awaiting final score"}</em></div>; })}</div><div className={styles.historyBonus}><strong>ROUND 1 TOP-SCORING TEAM</strong><span>{week1BonusTeams === null ? "Waiting for all final scores" : `${week1BonusTeams.join(" · ")} · +5 bonus points`}</span><em>{week1BonusTeams === null ? "Bonus not settled" : picks.topScorer ? (week1BonusTeams.includes(picks.topScorer) ? `Your pick · ${picks.topScorer} · +5 pts` : `Your pick · ${picks.topScorer} · 0 pts`) : "No bonus pick · 0 pts"}</em></div></section>
       <section id="standings" className={styles.dashboardGrid} aria-label="Season bonus predictions">
-        <article className={styles.panel}><div className={styles.panelHeading}><span>SEASON CALL</span><span>+10 POINTS</span></div><div className={styles.sideBody}><h2>Champion</h2><p className={styles.muted}>Pick the 2026/27 champion before the first game.</p><label className={styles.selectLabel} htmlFor="champion">Choose a team</label><select id="champion" value={picks.champion} disabled={!bonusOpen} onChange={(event) => { if (Date.now() + offset.current < firstLock) update({ ...picks, champion: event.target.value }); else setNow(Date.now() + offset.current); }}><option value="">Select a team</option>{teams.map((team) => <option key={team}>{team}</option>)}</select></div></article>
-        <article className={styles.panel}><div className={styles.panelHeading}><span>FINAL FOUR CALL</span><span>+3 PER TEAM</span></div><div className={styles.sideBody}><h2>Final Four</h2><p className={styles.muted}>Choose up to four teams before the first game. Each correct team earns three points.</p><div className={styles.teamPicker}>{teams.map((team) => {
+        <article className={styles.panel}><div className={styles.panelHeading}><span>SEASON CALL</span><span>+10 POINTS</span></div><div className={styles.sideBody}><h2>Champion</h2><p className={styles.muted}>Pick the 2026/27 champion before your circle’s first week ends.</p><label className={styles.selectLabel} htmlFor="champion">Choose a team</label><select id="champion" value={picks.champion} disabled={!bonusOpen} onChange={(event) => { if (Date.now() + offset.current < seasonLockAt) update({ ...picks, champion: event.target.value }); else setNow(Date.now() + offset.current); }}><option value="">Select a team</option>{teams.map((team) => <option key={team}>{team}</option>)}</select></div></article>
+        <article className={styles.panel}><div className={styles.panelHeading}><span>FINAL FOUR CALL</span><span>+3 PER TEAM</span></div><div className={styles.sideBody}><h2>Final Four</h2><p className={styles.muted}>Choose up to four teams before your circle’s first week ends. Each correct team earns three points.</p><div className={styles.teamPicker}>{teams.map((team) => {
           const selected = picks.finalFour.includes(team);
           return <button key={team} type="button" disabled={!bonusOpen || (!selected && picks.finalFour.length >= 4)} aria-pressed={selected} className={selected ? styles.pickSelected : styles.pick} onClick={() => {
-            if (Date.now() + offset.current >= firstLock) { setNow(Date.now() + offset.current); return; }
+            if (Date.now() + offset.current >= seasonLockAt) { setNow(Date.now() + offset.current); return; }
             update({ ...picks, finalFour: selected ? picks.finalFour.filter((value) => value !== team) : [...picks.finalFour, team] });
           }}>{team}<span aria-hidden="true">{selected ? "✓" : "+"}</span></button>;
         })}</div><p className={styles.status}>{picks.finalFour.length} / 4 selected · {bonusOpen ? "Open" : "Locked"}</p></div></article>

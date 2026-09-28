@@ -2,7 +2,8 @@ CREATE TABLE IF NOT EXISTS arena_users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email text NOT NULL UNIQUE,
   nickname text,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  started_at timestamptz
 );
 CREATE TABLE IF NOT EXISTS arena_login_tokens (
   token_hash text PRIMARY KEY,
