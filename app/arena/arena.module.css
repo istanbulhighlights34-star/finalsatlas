@@ -849,3 +849,23 @@
  .competitionPlayers { grid-template-columns:1fr; }
  .competitionList article { grid-template-columns:1fr; gap:5px; padding:14px 18px; }
 }
+
+
+/* 5–4–3 Bingo pyramid: compact club names keep every row on one line. */
+.bingoRow:first-of-type .bingoSlots { grid-template-columns:repeat(5,minmax(0,1fr)); }
+.bingoRow:last-of-type .bingoSlots { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.miniBingoRow:first-of-type { grid-template-columns:repeat(5,minmax(0,1fr)); }
+.miniBingoRow:last-of-type { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.bingoSlot select,.bingoSlotSelected select { font-size:11px; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; }
+.miniBingoRow > span b { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+@media(max-width:760px) {
+  .bingoSlots { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .bingoRow:first-of-type .bingoSlots { grid-template-columns:repeat(5,minmax(0,1fr)); }
+  .bingoRow:last-of-type .bingoSlots { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .bingoSlot,.bingoSlotSelected { min-width:0; min-height:86px; padding:8px 6px; gap:5px; }
+  .bingoSlot select,.bingoSlotSelected select { padding-top:9px; font-size:9px; }
+  .bingoSlot>em,.bingoSlotSelected>em { width:22px; height:22px; font-size:8px; }
+  .miniBingoRow { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .miniBingoRow:first-of-type { grid-template-columns:repeat(5,minmax(0,1fr)); }
+  .miniBingoRow:last-of-type { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
