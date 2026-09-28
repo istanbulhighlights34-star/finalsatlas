@@ -53,6 +53,9 @@ export default function ArenaPage() {
   const [nickname, setNickname] = useState("");
   const [message, setMessage] = useState("");
   const [selectedSport, setSelectedSport] = useState<"football" | "basketball">("football");
+  const [footballCompetition, setFootballCompetition] = useState<"leagues" | "cups">("leagues");
+  const [footballLeague, setFootballLeague] = useState("Süper Lig");
+  const [footballCup, setFootballCup] = useState("Champions League");
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const [groupName, setGroupName] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
@@ -281,11 +284,29 @@ export default function ArenaPage() {
           <a href="#matchroom">Open selected arena <b>→</b></a>
           <a href="#standings">View standings <b>→</b></a>
         </div>
-      </section>      {selectedSport === "football" && <section className={styles.emptySport} aria-label="Football Arena coming soon">
-        <span className={styles.pulseKicker}>FOOTBALL ARENA</span>
-        <h2>Fixtures are<br /><em>coming next.</em></h2>
-        <p>Football is part of the Finals Atlas plan. Domestic leagues and European cups will appear here when the first football schedule is ready.</p>
-        <div className={styles.emptySportMeta}><span>STATUS</span><strong>PREPARING THE FIXTURES</strong><span>MODE</span><strong>DOMESTIC LEAGUES · EUROPEAN CUPS</strong></div>
+      </section>{selectedSport === "football" && <section className={styles.footballHub} aria-label="Football competitions">
+        <div className={styles.footballHubHeader}>
+          <div><span className={styles.pulseKicker}>FOOTBALL ARENA</span><h2>Choose your competition</h2><p>Football has its own fixtures, predictions and standings, separate from Basketball.</p></div>
+          <span className={styles.footballSeason}>2026 / 27 SEASON</span>
+        </div>
+        <div className={styles.footballModes} role="tablist" aria-label="Football competition type">
+          <button type="button" role="tab" aria-selected={footballCompetition === "leagues"} className={footballCompetition === "leagues" ? styles.footballModeActive : styles.footballMode} onClick={() => setFootballCompetition("leagues")}><span>01</span><strong>Domestic Leagues</strong><small>Weekly league fixtures</small></button>
+          <button type="button" role="tab" aria-selected={footballCompetition === "cups"} className={footballCompetition === "cups" ? styles.footballModeActive : styles.footballMode} onClick={() => setFootballCompetition("cups")}><span>02</span><strong>European Cups</strong><small>Continental competitions</small></button>
+        </div>
+        <div className={styles.footballSelection}>
+          <div className={styles.footballChoiceList} aria-label={footballCompetition === "leagues" ? "Select a domestic league" : "Select a European cup"}>
+            {(footballCompetition === "leagues" ? ["Süper Lig", "Premier League", "Bundesliga", "La Liga", "Ligue 1"] : ["Champions League", "Europa League", "Conference League"]).map((name) => {
+              const selected = footballCompetition === "leagues" ? footballLeague === name : footballCup === name;
+              return <button key={name} type="button" aria-pressed={selected} className={selected ? styles.footballChoiceActive : styles.footballChoice} onClick={() => footballCompetition === "leagues" ? setFootballLeague(name) : setFootballCup(name)}>{name}<span>{selected ? "SELECTED" : "OPEN"}</span></button>;
+            })}
+          </div>
+          <div className={styles.footballComing}>
+            <span className={styles.pulseKicker}>{footballCompetition === "leagues" ? footballLeague.toUpperCase() : footballCup.toUpperCase()}</span>
+            <h3>Fixtures are<br /><em>coming next.</em></h3>
+            <p>We’re preparing the football schedule and prediction room for this competition. Your football picks and standings will stay separate from EuroLeague.</p>
+            <div className={styles.emptySportMeta}><span>COMPETITION</span><strong>{footballCompetition === "leagues" ? "DOMESTIC LEAGUE" : "EUROPEAN CUP"}</strong><span>STATUS</span><strong>FIXTURE FEED IN PREPARATION</strong></div>
+          </div>
+        </div>
       </section>}
       <div className={selectedSport === "football" ? styles.hiddenSportContent : ""}>
       <section id="matchroom" className={styles.heroGrid} aria-label="EuroLeague Round 2 predictions">
