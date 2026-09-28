@@ -37,7 +37,7 @@ const TEAM_ALIASES: Record<string, string[]> = {
   "partizan": ["partizan mozzart bet", "partizan"],
   "anadolu efes": ["anadolu efes istanbul", "anadolu efes"],
   "hapoel tel aviv": ["hapoel ibi tel aviv", "hapoel tel aviv"],
-  "bayern munich": ["fc bayern munich", "bayern munich"],
+  "bayern munich": ["fc bayern munich", "fc bayern munchen", "bayern munich", "bayern munchen"],
   "maccabi tel aviv": ["maccabi rapyd tel aviv", "maccabi playtika tel aviv", "maccabi tel aviv"],
 };
 
@@ -141,7 +141,11 @@ async function trySync(sql: ReturnType<typeof database>) {
           updated_at = now()
       `;
 
-      if (FINAL_STATUSES.test(status) && homeScore !== null && awayScore !== null && homeScore !== awayScore) {
+      const scoreIsSettled = homeScore !== null && awayScore !== null && homeScore !== awayScore;
+      const clearlyNotLive = !LIVE_STATUSES.test(status);
+      const pastExpectedFinish = Date.now() >= Date.parse(fixture[3]) + 3 * 60 * 60 * 1000;
+      const isFinal = FINAL_STATUSES.test(status) || (scoreIsSettled && clearlyNotLive && pastExpectedFinish);
+      if (isFinal && scoreIsSettled) {
         await sql`
           INSERT INTO arena_results (game_id, home_score, away_score)
           VALUES (${fixture[0]}, ${homeScore}, ${awayScore})
