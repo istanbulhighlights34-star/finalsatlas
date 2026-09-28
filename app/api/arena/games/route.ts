@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { database, fixtures } from "../../../../lib/arena";
+import { database, fixtureRound, fixtures } from "../../../../lib/arena";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -203,7 +203,7 @@ export async function GET() {
         ? { home: Number(live.home_score), away: Number(live.away_score) }
         : null;
       return {
-        id, home, away, tipoff,
+        id, home, away, tipoff, round: fixtureRound[id] || 1,
         status: isFinal ? "Final" : live?.status || null,
         result: isFinal ? { home: Number(final.home_score), away: Number(final.away_score) } : null,
         liveScore,
