@@ -309,7 +309,7 @@ export default function ArenaPage() {
                 {game.result && <p className={styles.pickFeedback}>{picks.games[game.id] ? ((picks.games[game.id] === "1" && game.result.home > game.result.away) || (picks.games[game.id] === "2" && game.result.away > game.result.home) ? "Correct · +2 points" : "Incorrect · 0 points") : "No pick · 0 points"}</p>}
               </div>;
             })}</div>
-            {week2BonusTeams !== null && <div className={styles.roundBonusResult}><strong>ROUND 2 TOP-SCORING TEAM</strong><span>{week2BonusTeams.join(" · ")} · +5 bonus points</span></div>}
+            {week2BonusTeams !== null && <div className={styles.roundBonusResult}><strong>ROUND 2 TOP-SCORING TEAM</strong><span>{week2BonusTeams.join(" · ")}</span><em>{week2BonusTeams.includes(picks.roundTopScorers["2"] || "") ? `Your pick · ${picks.roundTopScorers["2"]} · +5 pts` : picks.roundTopScorers["2"] ? `Your pick · ${picks.roundTopScorers["2"]} · 0 pts` : "No bonus pick · 0 pts"}</em></div>}
             <p className={styles.status}>{complete} / {roundGames.length} selected · {openCount} games open · {saved ? account ? "Saved to account" : "Saved on this device" : "Saving or unavailable"}</p>
             <div className={styles.submitBar}><span>{roundSubmitted ? "Week 2 picks are locked." : "Review your picks, then submit to lock this round."}</span><button className={styles.submitButton} type="button" disabled={roundSubmitted || submittingRound || !saved || complete !== roundGames.length || now === null} onClick={() => void submitCurrentRound()}>{roundSubmitted ? "Picks submitted ✓" : submittingRound ? "Submitting…" : "Submit week 2 picks"}</button></div>
           </div>
