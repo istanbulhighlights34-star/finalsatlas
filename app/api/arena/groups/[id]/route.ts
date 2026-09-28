@@ -10,7 +10,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const tuesday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - ((now.getUTCDay() + 5) % 7)));
   const bingoWeekKey = tuesday.toISOString().slice(0, 10);
   const bingoPickKey = `bingoCard:${bingoWeekKey}`;
-  const access = await sql`SELECT g.name FROM arena_groups g JOIN arena_members m ON m.group_id = g.id WHERE g.id = ${id} AND m.user_id = ${user.id} LIMIT 1`;
+  await sql`ALTER TABLE arena_groups ADD COLUMN IF NOT EXISTS started_at timestamptz`;
+  const access = await sql`SELECT g.name, g.owner_id, g.started_at FROM arena_groups g JOIN arena_members m ON m.group_id = g.id WHERE g.id = ${id} AND m.user_id = ${user.id} LIMIT 1`;
   if (!access.length) return jsonError("Group not found", 404);
   await sql`CREATE TABLE IF NOT EXISTS arena_bingo_team_results (
     week_key text NOT NULL, team text NOT NULL, opponent text, kickoff timestamptz, status text, won boolean,
@@ -77,5 +78,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const bingo = completedRows >= 3 ? 30 : 0;
     return { id: m.id, name: m.nickname || `Player ${String(m.id).slice(0, 6)}`, locked: !!locked, completedRows, firstChinko, secondChinko, bingo, weeklyTotal: firstChinko + secondChinko + bingo };
   }).sort((a, b) => b.weeklyTotal - a.weeklyTotal || a.name.localeCompare(b.name));
-  return Response.json({ name: access[0].name, standings: scores, bingoWeek: bingoWeekKey, bingoCards, bingoStandings, bingoReady: lockedCards.filter(Boolean).length, bingoPlayers: members.length, scoredGames: results.length, totalGames: fixtures.length }, { headers: { "Cache-Control": "no-store" } });
+  const startedAt = access[0].started_at ? new Date(String(access[0].started_at)).toISOString() : null;
+  const pickLockAt = startedAt ? new Date(Date.parse(startedAt) + 7 * 24 * 60 * 60 * 1000).toISOString() : null;
+  const picksOpen = !pickLockAt || Date.now() < Date.parse(pickLockAt);
+  return Response.json({ name: access[0].name, startedAt, pickLockAt, picksOpen, canStart: String(access[0].owner_id) === String(user.id) && !startedAt, standings: scores, bingoWeek: bingoWeekKey, bingoCards, bingoStandings, bingoReady: lockedCards.filter(Boolean).length, bingoPlayers: members.length, scoredGames: results.length, totalGames: fixtures.length }, { headers: { "Cache-Control": "no-store" } });
 }
