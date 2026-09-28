@@ -13,6 +13,7 @@ export async function PUT(request: Request) {
   if (!user) return jsonError("Sign in first", 401);
   const body = await request.json() as { key?: string; selection?: string; action?: string; round?: number };
   const sql = database();
+  await sql`ALTER TABLE arena_groups ADD COLUMN IF NOT EXISTS started_at timestamptz`;
 
   if (body.action === "submitRound") {
     const round = body.round;
@@ -43,6 +44,14 @@ export async function PUT(request: Request) {
   const bingoKey = /^bingoCard:\d{4}-\d{2}-\d{2}$/.test(key || "");
   if (!game && !bonusRound && !bingoKey && !["champion", "finalFour"].includes(key || "")) return jsonError("Unknown pick");
   let lock = game ? Date.parse(game[3]) - 120_000 : bonusRound ? Math.min(...bonusGames.map(([, , , tipoff]) => Date.parse(tipoff) - 120_000)) : firstLock;
+  if (key === "champion" || key === "finalFour") {
+    const starts = await sql`SELECT MIN(g.started_at) AS started_at
+      FROM arena_groups g JOIN arena_members m ON m.group_id = g.id
+      WHERE m.user_id = ${user.id} AND g.started_at IS NOT NULL`;
+    lock = starts[0]?.started_at
+      ? Date.parse(String(starts[0].started_at)) + 7 * 24 * 60 * 60 * 1000
+      : Number.POSITIVE_INFINITY;
+  }
   if (bingoKey) {
     const weekKey = String(key).slice("bingoCard:".length);
     const rows = await sql`SELECT MIN(kickoff) AS first_kickoff FROM arena_bingo_team_results WHERE week_key = ${weekKey}`;
