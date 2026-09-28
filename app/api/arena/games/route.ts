@@ -158,7 +158,7 @@ async function trySync(sql: ReturnType<typeof database>) {
     console.error("TheSportsDB EuroLeague sync failed", { message: message.slice(0, 300) });
     await sql`
       UPDATE arena_provider_sync
-      SET lease_until = NULL, last_error = ${message.slice(0, 300)}
+      SET last_synced_at = now(), lease_until = NULL, last_error = ${message.slice(0, 300)}
       WHERE source = 'thesportsdb-euroleague'
     `;
   }
