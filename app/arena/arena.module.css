@@ -648,3 +648,8 @@
 .bingoSave button:disabled{background:#2b2b2b;color:#666;cursor:not-allowed}
 @media(max-width:900px){.bingoBuilder{grid-template-columns:1fr}.bingoIntro{border-right:0;border-bottom:1px solid #292929}.bingoTeams{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.footballGameModes{grid-template-columns:1fr}.footballGame,.footballGameActive{border-right:0;border-bottom:1px solid #292929;min-height:92px;padding:16px 18px}.bingoIntro{padding:24px 18px}.bingoCard{padding:10px}.bingoTeams{grid-template-columns:1fr}.bingoTeam,.bingoTeamSelected{min-height:72px}.bingoRowHead{grid-template-columns:1fr auto;gap:6px}.bingoRowHead small{grid-column:1/3}.bingoSave{align-items:stretch;flex-direction:column}.bingoSave button{width:100%}}
+
+.bingoRules{display:grid;gap:1px;margin-top:24px;background:#303030;border:1px solid #303030}
+.bingoRules>span{display:flex;justify-content:space-between;gap:12px;padding:11px 12px;background:#151515}
+.bingoRules strong{color:#d7ff3f;font-size:10px;letter-spacing:.08em}
+.bingoRules em{color:#aaa;font-size:11px;font-style:normal;text-align:right}
