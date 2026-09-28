@@ -567,3 +567,10 @@
  .historyRow strong { grid-column:1; font-size:12px; }
  .historyRow em { grid-column:2; grid-row:2; text-align:right; font-size:10px; }
 }
+
+/* Weekly bonus results */
+.historyBonus, .roundBonusResult { display:grid; grid-template-columns:minmax(180px,.8fr) minmax(0,1fr); gap:8px 20px; align-items:center; margin-top:18px; padding:16px 18px; border:1px solid #4b563b; background:#22291d; color:#c9d1c2; font:13px/1.4 Arial,sans-serif; }
+.historyBonus strong, .roundBonusResult strong { color:#d5ff3f; font:700 10px/1.3 Arial,sans-serif; letter-spacing:.1em; }
+.historyBonus span, .roundBonusResult span { font-weight:700; }
+.historyBonus em { grid-column:2; color:#929b8e; font-size:12px; font-style:normal; }
+@media (max-width:720px) { .historyBonus, .roundBonusResult { grid-template-columns:1fr; gap:7px; padding:14px; } .historyBonus em { grid-column:auto; } }
