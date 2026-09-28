@@ -36,8 +36,9 @@ export async function GET() {
     ? Object.keys(payload.errors)
     : [];
   if (providerErrors.length > 0) {
-    // Keep error values in server logs only; never send provider details or credentials to clients.
-    console.error("API-Sports basketball provider errors", { fields: providerErrors });
+    // Keep detailed provider errors server-side and redact the configured credential before logging.
+    const errorDetails = JSON.stringify(payload.errors).replaceAll(key, "[REDACTED]").slice(0, 500);
+    console.error("API-Sports basketball provider errors", { fields: providerErrors, details: errorDetails });
     return NextResponse.json({
       available: false,
       error: "Basketball provider rejected the request.",
