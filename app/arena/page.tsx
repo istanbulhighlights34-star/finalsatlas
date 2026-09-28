@@ -31,7 +31,7 @@ initialGames.push(
   { id: "r2-mta-bjk", round: 2, home: "Maccabi Tel Aviv", away: "Beşiktaş", tipoff: "2026-09-30T18:05:00Z" },
   { id: "r2-pao-asv", round: 2, home: "Panathinaikos", away: "ASVEL", tipoff: "2026-09-30T18:15:00Z" },
 );
-const initialTeams = initialGames.flatMap((game) => [game.home, game.away]);
+const initialTeams = [...new Set(initialGames.flatMap((game) => [game.home, game.away]))];
 const storageKey = "finalsatlas-euroleague-2026-27-round-1";
 const emptyPicks: Picks = { games: {}, topScorer: "", champion: "", finalFour: [] };
 const formatTime = (iso: string) => new Intl.DateTimeFormat(undefined, {
@@ -59,7 +59,7 @@ export default function ArenaPage() {
   const [standings, setStandings] = useState<{ name: string; points: number; picks: number }[]>([]);
   const [inviteUrl, setInviteUrl] = useState("");
   const offset = useRef(0);
-  const teams = games.length ? games.flatMap((game) => [game.home, game.away]) : initialTeams;
+  const teams = games.length ? [...new Set(games.flatMap((game) => [game.home, game.away]))] : initialTeams;
   const firstLock = games.length ? Date.parse(games[0].tipoff) - 120_000 : Infinity;
 
   useEffect(() => {

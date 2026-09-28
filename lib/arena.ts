@@ -24,7 +24,7 @@ export const fixtures = [
   ["r2-pao-asv", "Panathinaikos", "ASVEL", "2026-09-30T18:15:00Z"],
 ] as const;
 export const fixtureRound: Record<string, number> = Object.fromEntries(fixtures.map(([id]) => [id, id.startsWith("r2-") ? 2 : 1]));
-export const teams: string[] = fixtures.flatMap((game) => [game[1], game[2]]);
+export const teams: string[] = [...new Set(fixtures.flatMap((game) => [game[1], game[2]]))];
 export const firstLock = Date.parse(fixtures[0][3]) - 120_000;
 export const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 export const token = () => randomBytes(32).toString("base64url");
