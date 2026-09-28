@@ -39,14 +39,15 @@ const emptyPicks: Picks = { games: {}, topScorer: "", roundTopScorers: {}, champ
 const formatTime = (iso: string) => new Intl.DateTimeFormat(undefined, {
   weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZoneName: "short",
 }).format(new Date(iso));
-const teamShortName = (team: string) => ({
+const TEAM_SHORT: Record<string, string> = {
   "Paris Saint-Germain": "PSG", "Beşiktaş": "BJK", "Fenerbahçe": "FB", "Galatasaray": "GS",
   "Real Madrid": "R. MADRID", "Manchester City": "MAN CITY", "Bayern Munich": "BAYERN",
   "Barcelona": "BARÇA", "Inter": "INTER", "Newcastle": "NEWCASTLE", "Başakşehir": "BAŞAKŞEHİR",
   "Hoffenheim": "HOFFENHEIM", "Real Sociedad": "R. SOCIEDAD", "Real Betis": "R. BETIS",
   "Atalanta": "ATALANTA", "Çorum FK": "ÇORUM FK", "Gaziantep": "GAZİANTEP",
   "Crystal Palace": "C. PALACE", "St. Pauli": "ST. PAULI",
-}[team] || (team.length > 12 ? team.split(/\s+/).map(word => word[0]).join("").slice(0, 5).toUpperCase() : team.toUpperCase()));
+};
+const teamShortName = (team: string) => TEAM_SHORT[team] || (team.length > 12 ? team.split(/\s+/).map(word => word[0]).join("").slice(0, 5).toUpperCase() : team.toUpperCase());
 
 const bingoTiers = [
   { id: "elite", label: "TOP TIER", limit: 5, points: 10, teams: ["Manchester City", "Bayern Munich", "Paris Saint-Germain", "Real Madrid", "Barcelona", "Inter"] },
