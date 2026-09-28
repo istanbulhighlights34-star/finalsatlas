@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import styles from "./arena.module.css";
 
 type Game = { round?: number; id: string; home: string; away: string; tipoff: string; homeLogo?: string | null; awayLogo?: string | null; status?: string | null; result?: { home: number; away: number } | null; liveScore?: { home: number; away: number } | null };
-type Picks = { games: Record<string, "1" | "2">; topScorer: string; champion: string; finalFour: string[] };
+type Picks = { games: Record<string, "1" | "2">; topScorer: string; roundTopScorers: Record<string, string>; champion: string; finalFour: string[] };
 // EuroLeague Media Centre lists these times in CEST (UTC+2).
 const initialGames: Game[] = [
   { id: "hta-bay", home: "Hapoel Tel Aviv", away: "Bayern Munich", tipoff: "2026-09-24T16:00:00Z", result: { home: 84, away: 86 } },
@@ -33,7 +33,7 @@ initialGames.push(
 );
 const initialTeams = [...new Set(initialGames.flatMap((game) => [game.home, game.away]))];
 const storageKey = "finalsatlas-euroleague-2026-27-round-1";
-const emptyPicks: Picks = { games: {}, topScorer: "", champion: "", finalFour: [] };
+const emptyPicks: Picks = { games: {}, topScorer: "", roundTopScorers: {}, champion: "", finalFour: [] };
 const formatTime = (iso: string) => new Intl.DateTimeFormat(undefined, {
   weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZoneName: "short",
 }).format(new Date(iso));
@@ -83,7 +83,7 @@ export default function ArenaPage() {
       const value = localStorage.getItem(storageKey);
       if (value) {
         const stored = JSON.parse(value) as Partial<Picks>;
-        setPicks({ games: stored.games || {}, topScorer: stored.topScorer || "", champion: stored.champion || "", finalFour: Array.isArray(stored.finalFour) ? stored.finalFour : [] });
+        setPicks({ games: stored.games || {}, topScorer: stored.topScorer || "", roundTopScorers: stored.roundTopScorers || {}, champion: stored.champion || "", finalFour: Array.isArray(stored.finalFour) ? stored.finalFour : [] });
         setSubmittedRounds(Array.isArray((stored as { submittedRounds?: number[] }).submittedRounds) ? (stored as { submittedRounds: number[] }).submittedRounds : []);
       }
     } catch { setSaved(false); }
@@ -125,7 +125,7 @@ export default function ArenaPage() {
         const [savedPicks, membership] = await Promise.all([fetch("/api/arena/picks"), fetch("/api/arena/groups")]);
         if (savedPicks.ok) {
           const values = (await savedPicks.json()).picks as Record<string, string>;
-          setPicks({ games: Object.fromEntries(Object.entries(values).filter(([key]) => key.startsWith("game:")).map(([key, value]) => [key.slice(5), value as "1" | "2"])), topScorer: values.topScorer || "", champion: values.champion || "", finalFour: JSON.parse(values.finalFour || "[]") });
+          setPicks({ games: Object.fromEntries(Object.entries(values).filter(([key]) => key.startsWith("game:")).map(([key, value]) => [key.slice(5), value as "1" | "2"])), topScorer: values["topScorer:1"] || values.topScorer || "", roundTopScorers: { "1": values["topScorer:1"] || values.topScorer || "", "2": values["topScorer:2"] || "" }, champion: values.champion || "", finalFour: JSON.parse(values.finalFour || "[]") });
           setSubmittedRounds([1, 2].filter(round => values[`roundSubmitted:${round}`] === "submitted"));
         }
         if (membership.ok) setGroups((await membership.json()).groups);
@@ -165,8 +165,9 @@ export default function ArenaPage() {
     setPicks(next);
     if (account) {
       const changed = Object.entries(next.games).find(([id, value]) => picks.games[id] !== value);
-      const key = changed ? `game:${changed[0]}` : next.topScorer !== picks.topScorer ? "topScorer" : next.champion !== picks.champion ? "champion" : "finalFour";
-      const selection = changed ? changed[1] : key === "topScorer" ? next.topScorer : key === "champion" ? next.champion : JSON.stringify(next.finalFour);
+      const changedBonusRound = ["1", "2"].find(round => next.roundTopScorers[round] !== picks.roundTopScorers[round]);
+      const key = changed ? `game:${changed[0]}` : changedBonusRound ? `topScorer:${changedBonusRound}` : next.topScorer !== picks.topScorer ? "topScorer" : next.champion !== picks.champion ? "champion" : "finalFour";
+      const selection = changed ? changed[1] : changedBonusRound ? next.roundTopScorers[changedBonusRound] : key === "topScorer" ? next.topScorer : key === "champion" ? next.champion : JSON.stringify(next.finalFour);
       setSaved(false);
       void fetch("/api/arena/picks", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key, selection }) }).then(async response => {
         if (!response.ok) { setPicks(picks); setMessage((await response.json()).error || "Could not save pick"); }
@@ -184,6 +185,17 @@ export default function ArenaPage() {
   const complete = roundGames.filter((game) => picks.games[game.id]).length;
   const openCount = now === null ? 0 : roundGames.filter((game) => now < Date.parse(game.tipoff) - 120_000).length;
   const roundSubmitted = submittedRounds.includes(2);
+  const round2FirstLock = roundGames.length ? Math.min(...roundGames.map(game => Date.parse(game.tipoff) - 120_000)) : Infinity;
+  const round2BonusOpen = now !== null && now < round2FirstLock && !roundSubmitted;
+  const getTopScoringTeams = (roundMatches: Game[]) => {
+    if (!roundMatches.length || roundMatches.some(game => !game.result)) return null;
+    const totals = new Map<string, number>();
+    for (const game of roundMatches) { totals.set(game.home, (totals.get(game.home) || 0) + game.result!.home); totals.set(game.away, (totals.get(game.away) || 0) + game.result!.away); }
+    const highest = Math.max(...totals.values());
+    return [...totals.entries()].filter(([, points]) => points === highest).map(([team]) => team);
+  };
+  const week1BonusTeams = getTopScoringTeams(historyGames);
+  const week2BonusTeams = getTopScoringTeams(roundGames);
   const timeZone = now === null ? "Your local time" : new Intl.DateTimeFormat(undefined, { timeZoneName: "short" }).formatToParts(new Date(now)).find((part) => part.type === "timeZoneName")?.value || "Local time";
 
   async function submitCurrentRound() {
@@ -297,20 +309,21 @@ export default function ArenaPage() {
                 {game.result && <p className={styles.pickFeedback}>{picks.games[game.id] ? ((picks.games[game.id] === "1" && game.result.home > game.result.away) || (picks.games[game.id] === "2" && game.result.away > game.result.home) ? "Correct · +2 points" : "Incorrect · 0 points") : "No pick · 0 points"}</p>}
               </div>;
             })}</div>
+            {week2BonusTeams !== null && <div className={styles.roundBonusResult}><strong>ROUND 2 TOP-SCORING TEAM</strong><span>{week2BonusTeams.join(" · ")} · +5 bonus points</span></div>}
             <p className={styles.status}>{complete} / {roundGames.length} selected · {openCount} games open · {saved ? account ? "Saved to account" : "Saved on this device" : "Saving or unavailable"}</p>
             <div className={styles.submitBar}><span>{roundSubmitted ? "Week 2 picks are locked." : "Review your picks, then submit to lock this round."}</span><button className={styles.submitButton} type="button" disabled={roundSubmitted || submittingRound || !saved || complete !== roundGames.length || now === null} onClick={() => void submitCurrentRound()}>{roundSubmitted ? "Picks submitted ✓" : submittingRound ? "Submitting…" : "Submit week 2 picks"}</button></div>
           </div>
         </article>
         <aside className={styles.seasonCard}>
-          <div className={styles.cardTop}><span>ROUND BONUS</span><span>+5 POINTS</span></div>
-          <div className={styles.sideBody}><h2>Top-scoring team</h2><p className={styles.muted}>Which team scores the most points in Round 1? A tie at the top counts for each tied team. This pick closes before the first game.</p>
+          <div className={styles.cardTop}><span>ROUND 02 BONUS</span><span>+5 POINTS</span></div>
+          <div className={styles.sideBody}><h2>Top-scoring team</h2><p className={styles.muted}>Which team scores the most points in Round 2? A tie at the top counts for each tied team. This pick closes before the first game.</p>
             <label className={styles.selectLabel} htmlFor="top-scorer">Choose a team</label>
-            <select id="top-scorer" value={picks.topScorer} disabled={!bonusOpen} onChange={(event) => { if (Date.now() + offset.current < firstLock) update({ ...picks, topScorer: event.target.value }); else setNow(Date.now() + offset.current); }}><option value="">Select a team</option>{teams.map((team) => <option key={team}>{team}</option>)}</select>
-            <p className={styles.status}>{bonusOpen ? `Locks ${formatTime(new Date(firstLock).toISOString())}` : now === null ? "Checking deadline…" : "Match bonus locked"}</p>
+            <select id="top-scorer" value={picks.roundTopScorers["2"] || ""} disabled={!round2BonusOpen} onChange={(event) => { if (Date.now() + offset.current < round2FirstLock && !roundSubmitted) update({ ...picks, roundTopScorers: { ...picks.roundTopScorers, "2": event.target.value } }); else setNow(Date.now() + offset.current); }}><option value="">Select a team</option>{teams.map((team) => <option key={team}>{team}</option>)}</select>
+            <p className={styles.status}>{round2BonusOpen ? `Locks ${formatTime(new Date(round2FirstLock).toISOString())}` : now === null ? "Checking deadline…" : "Round 2 bonus locked"}</p>
           </div>
         </aside>
       </section>
-      <section className={styles.historySection} aria-label="Week 1 results and points"><div className={styles.historyHeading}><div><span className={styles.pulseKicker}>COMPLETED ROUND</span><h2>Week 1 · Results & points</h2></div><span>{historyGames.filter(game => !!game.result).length} / {historyGames.length} results</span></div><div className={styles.historyList}>{historyGames.map(game => { const correct = !!game.result && ((picks.games[game.id] === "1" && game.result.home > game.result.away) || (picks.games[game.id] === "2" && game.result.away > game.result.home)); return <div className={styles.historyRow} key={game.id}><span>{game.home} <i>vs</i> {game.away}</span><strong>{game.result ? `${game.result.home} – ${game.result.away}` : "Result pending"}</strong><em className={game.result ? (correct ? styles.pointsWon : styles.pointsMissed) : ""}>{game.result ? (picks.games[game.id] ? (correct ? "Correct · +2 pts" : "Incorrect · 0 pts") : "No pick · 0 pts") : "Awaiting final score"}</em></div>; })}</div></section>
+      <section className={styles.historySection} aria-label="Week 1 results and points"><div className={styles.historyHeading}><div><span className={styles.pulseKicker}>COMPLETED ROUND</span><h2>Week 1 · Results & points</h2></div><span>{historyGames.filter(game => !!game.result).length} / {historyGames.length} results</span></div><div className={styles.historyList}>{historyGames.map(game => { const correct = !!game.result && ((picks.games[game.id] === "1" && game.result.home > game.result.away) || (picks.games[game.id] === "2" && game.result.away > game.result.home)); return <div className={styles.historyRow} key={game.id}><span>{game.home} <i>vs</i> {game.away}</span><strong>{game.result ? `${game.result.home} – ${game.result.away}` : "Result pending"}</strong><em className={game.result ? (correct ? styles.pointsWon : styles.pointsMissed) : ""}>{game.result ? (picks.games[game.id] ? (correct ? "Correct · +2 pts" : "Incorrect · 0 pts") : "No pick · 0 pts") : "Awaiting final score"}</em></div>; })}</div><div className={styles.historyBonus}><strong>ROUND 1 TOP-SCORING TEAM</strong><span>{week1BonusTeams === null ? "Waiting for all final scores" : `${week1BonusTeams.join(" · ")} · +5 bonus points`}</span><em>{week1BonusTeams === null ? "Bonus not settled" : picks.topScorer ? (week1BonusTeams.includes(picks.topScorer) ? `Your pick · ${picks.topScorer} · +5 pts` : `Your pick · ${picks.topScorer} · 0 pts`) : "No bonus pick · 0 pts"}</em></div></section>
       <section id="standings" className={styles.dashboardGrid} aria-label="Season bonus predictions">
         <article className={styles.panel}><div className={styles.panelHeading}><span>SEASON CALL</span><span>+10 POINTS</span></div><div className={styles.sideBody}><h2>Champion</h2><p className={styles.muted}>Pick the 2026/27 champion before the first game.</p><label className={styles.selectLabel} htmlFor="champion">Choose a team</label><select id="champion" value={picks.champion} disabled={!bonusOpen} onChange={(event) => { if (Date.now() + offset.current < firstLock) update({ ...picks, champion: event.target.value }); else setNow(Date.now() + offset.current); }}><option value="">Select a team</option>{teams.map((team) => <option key={team}>{team}</option>)}</select></div></article>
         <article className={styles.panel}><div className={styles.panelHeading}><span>FINAL FOUR CALL</span><span>+3 PER TEAM</span></div><div className={styles.sideBody}><h2>Final Four</h2><p className={styles.muted}>Choose up to four teams before the first game. Each correct team earns three points.</p><div className={styles.teamPicker}>{teams.map((team) => {
