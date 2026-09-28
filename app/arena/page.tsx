@@ -419,7 +419,7 @@ export default function ArenaPage() {
                 </div>
               </article>) : <p className={styles.europeanFixtureEmpty}>{europeanFeedReady ? "No upcoming fixtures are available yet." : "Fixture data is loading. If it stays empty, the provider feed may be temporarily unavailable."}</p>}
             </div>}
-            <div className={styles.emptySportMeta}><span>COMPETITION</span><strong>{footballCompetition === "leagues" ? "DOMESTIC LEAGUE" : "THREE EUROPEAN CUPS · ONE ARENA"}</strong><span>STATUS</span><strong>FIXTURE FEED IN PREPARATION</strong></div>
+            <div className={styles.emptySportMeta}><span>COMPETITION</span><strong>{footballCompetition === "leagues" ? "DOMESTIC LEAGUE" : "THREE EUROPEAN CUPS · ONE ARENA"}</strong><span>STATUS</span><strong>{footballCompetition === "cups" ? (europeanFeedReady ? "LIVE FIXTURE FEED" : "FIXTURE FEED CONNECTING") : "FIXTURE FEED IN PREPARATION"}</strong></div>
           </div>
         </div> : <div className={styles.bingoBuilder}>
           <div className={styles.bingoIntro}>
