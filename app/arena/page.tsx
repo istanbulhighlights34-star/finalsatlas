@@ -70,6 +70,7 @@ export default function ArenaPage() {
   const [bingoReady, setBingoReady] = useState(0);
   const [bingoPlayers, setBingoPlayers] = useState(0);
   const [bingoStandings, setBingoStandings] = useState<{ id: string; name: string; locked: boolean; firstChinko: number; secondChinko: number; bingo: number; weeklyTotal: number }[]>([]);
+  const [bingoTeamResults, setBingoTeamResults] = useState<Record<string, { opponent?: string; status?: string; won?: boolean | null; live?: boolean }>>({});
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const [groupName, setGroupName] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
@@ -171,6 +172,20 @@ export default function ArenaPage() {
       } catch { setMessage("Account service is unavailable."); }
     }
     void load();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function refreshBingoResults() {
+      try {
+        const response = await fetch("/api/arena/bingo", { cache: "no-store" });
+        const data = await response.json();
+        if (active && Array.isArray(data.teams)) setBingoTeamResults(Object.fromEntries(data.teams.map((team: { team: string }) => [team.team, team])));
+      } catch { /* keep the card usable while the score feed is unavailable */ }
+    }
+    void refreshBingoResults();
+    const interval = setInterval(() => { void refreshBingoResults(); }, 15 * 60_000);
+    return () => { active = false; clearInterval(interval); };
   }, []);
 
   useEffect(() => {
@@ -386,7 +401,10 @@ export default function ArenaPage() {
                 <div className={styles.bingoSlots}>{Array.from({ length: tier.limit }, (_, slot) => {
                   const selected = bingoPicks[tier.id][slot] || "";
                   const used = new Set(bingoPicks[tier.id].filter(Boolean));
-                  return <label className={selected ? styles.bingoSlotSelected : styles.bingoSlot} key={slot}><span>{String(slot + 1).padStart(2, "0")}</span><select aria-label={`${tier.label} team ${slot + 1}`} value={selected} disabled={bingoSaved} onChange={event => updateBingoSlot(tier.id, slot, event.target.value)}><option value="">Choose team</option>{tier.teams.map(team => <option key={team} value={team} disabled={used.has(team) && team !== selected}>{team}</option>)}</select><em>{selected ? selected.slice(0, 2).toUpperCase() : "FA"}</em></label>;
+                  const teamResult = selected ? bingoTeamResults[selected] : undefined;
+                  const finalLost = teamResult && teamResult.won === false;
+                  const slotClass = teamResult?.won === true ? styles.bingoSlotWon : teamResult?.live ? styles.bingoSlotLive : finalLost ? styles.bingoSlotLost : selected ? styles.bingoSlotSelected : styles.bingoSlot;
+                  return <label className={slotClass} key={slot}><span>{teamResult?.opponent ? `vs ${teamResult.opponent}` : String(slot + 1).padStart(2, "0")}</span><select aria-label={`${tier.label} team ${slot + 1}`} value={selected} disabled={bingoSaved} onChange={event => updateBingoSlot(tier.id, slot, event.target.value)}><option value="">Choose team</option>{tier.teams.map(team => <option key={team} value={team} disabled={used.has(team) && team !== selected}>{team}</option>)}</select><em>{teamResult?.won === true ? "WIN" : teamResult?.live ? "LIVE" : finalLost ? "FT" : selected ? selected.slice(0, 2).toUpperCase() : "FA"}</em></label>;
                 })}</div>
               </section>)}
               <div className={styles.bingoSave}><div><strong>{bingoSaved ? "Your card is locked." : bingoComplete ? "Your 10-team card is ready." : "Complete all three rows to lock your card."}</strong><span>Cards stay private until every player in the circle has locked a complete card.</span></div><button type="button" disabled={!bingoComplete || bingoSaved} onClick={() => void lockBingoCard()}>{bingoSaved ? "CARD LOCKED" : "LOCK MY CARD"}</button></div>
