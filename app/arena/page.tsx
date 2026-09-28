@@ -6,6 +6,7 @@ import styles from "./arena.module.css";
 
 type Game = { round?: number; id: string; home: string; away: string; tipoff: string; homeLogo?: string | null; awayLogo?: string | null; status?: string | null; result?: { home: number; away: number } | null; liveScore?: { home: number; away: number } | null };
 type EuropeanFixture = { id: string; competition: "ucl" | "uel" | "uecl"; round: number | null; home: string; away: string; kickoff: string; status: string | null; result: { home: number; away: number } | null; homeLogo: string | null; awayLogo: string | null };
+type BingoFixture = { id: string; league: string; home: string; away: string; home_logo?: string | null; away_logo?: string | null; kickoff: string; status?: string | null; home_score?: number | null; away_score?: number | null; live?: boolean; final?: boolean };
 type Picks = { games: Record<string, "1" | "2">; topScorer: string; roundTopScorers: Record<string, string>; champion: string; finalFour: string[] };
 // EuroLeague Media Centre lists these times in CEST (UTC+2).
 const initialGames: Game[] = [
@@ -73,7 +74,9 @@ export default function ArenaPage() {
   const [bingoReady, setBingoReady] = useState(0);
   const [bingoPlayers, setBingoPlayers] = useState(0);
   const [bingoStandings, setBingoStandings] = useState<{ id: string; name: string; locked: boolean; firstChinko: number; secondChinko: number; bingo: number; weeklyTotal: number }[]>([]);
-  const [bingoTeamResults, setBingoTeamResults] = useState<Record<string, { opponent?: string; status?: string; won?: boolean | null; live?: boolean }>>({});
+  const [bingoTeamResults, setBingoTeamResults] = useState<Record<string, { opponent?: string; kickoff?: string; status?: string; won?: boolean | null; live?: boolean; home_score?: number | null; away_score?: number | null }>>({});
+  const [bingoFixtures, setBingoFixtures] = useState<BingoFixture[]>([]);
+  const [bingoWindow, setBingoWindow] = useState<{ from: string; to: string } | null>(null);
   const [bingoWeek, setBingoWeek] = useState("");
   const [accountPickValues, setAccountPickValues] = useState<Record<string, string>>({});
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
@@ -199,6 +202,8 @@ export default function ArenaPage() {
         const data = await response.json();
         if (active && Array.isArray(data.teams)) {
           setBingoTeamResults(Object.fromEntries(data.teams.map((team: { team: string }) => [team.team, team])));
+          setBingoFixtures(Array.isArray(data.fixtures) ? data.fixtures : []);
+          setBingoWindow(data.window && typeof data.window.from === "string" ? data.window : null);
           const week = String(data.week || "");
           setBingoWeek(week);
           const stored = accountPickValues[`bingoCard:${week}`] || (!account ? localStorage.getItem(`finalsatlas-bingo-${week}`) : "");
@@ -430,6 +435,18 @@ export default function ArenaPage() {
             <div className={styles.bingoScore}><span>CURRENT CARD</span><strong>{bingoPicks.elite.filter(Boolean).length + bingoPicks.middle.filter(Boolean).length + bingoPicks.outsider.filter(Boolean).length}<small> / 10 teams</small></strong><em>Maximum weekly score · 60 points</em></div>
           </div>
           <div className={styles.bingoCard}>
+            <section className={styles.bingoFixtures} aria-label="Friday to Monday fixtures">
+              <div className={styles.bingoFixturesHead}><div><span className={styles.pulseKicker}>FRIDAY — MONDAY</span><h3>This week’s fixture board</h3></div><strong>{bingoWindow ? `${bingoWindow.from} / ${bingoWindow.to}` : "CURRENT CARD"}</strong></div>
+              {bingoFixtures.length ? <div className={styles.bingoFixtureList}>{bingoFixtures.map(match => <article className={styles.bingoFixture} key={match.id}>
+                <div className={styles.bingoFixtureMeta}><span>{match.league}</span><time dateTime={match.kickoff}>{formatTime(match.kickoff)}</time></div>
+                <div className={styles.bingoFixtureTeams}>
+                  <span>{match.home_logo && <img src={match.home_logo} alt="" loading="lazy" />}<strong>{match.home}</strong></span>
+                  <em>{match.final || match.live ? `${match.home_score ?? "–"} : ${match.away_score ?? "–"}` : "VS"}</em>
+                  <span>{match.away_logo && <img src={match.away_logo} alt="" loading="lazy" />}<strong>{match.away}</strong></span>
+                </div>
+                <small className={match.live ? styles.fixtureLive : match.final ? styles.fixtureFinal : styles.fixtureOpen}>{match.live ? "LIVE" : match.final ? "FINAL" : "SCHEDULED"}</small>
+              </article>)}</div> : <p className={styles.communityEmpty}>The Friday–Monday fixtures will appear here as soon as the live football feed completes its first sync.</p>}
+            </section>
             <div className={styles.bingoTicket}>
               <div className={styles.bingoTicketTop}><span>FINALS ATLAS · WEEKLY CARD</span><strong>{bingoSaved ? "LOCKED" : "BUILDING"}</strong></div>
               {bingoTiers.map((tier, index) => <section className={styles.bingoRow} key={tier.id}>
@@ -447,7 +464,7 @@ export default function ArenaPage() {
             </div>
             {selectedGroup && <section className={styles.communityCards}>
               <div className={styles.communityHead}><div><span className={styles.pulseKicker}>CIRCLE CARDS</span><h3>{bingoCards.length ? "The cards are open" : "Waiting for every player"}</h3></div><strong>{bingoReady} / {bingoPlayers} LOCKED</strong></div>
-              {bingoCards.length ? <div className={styles.communityGrid}>{bingoCards.map(player => <article className={styles.miniBingo} key={player.id}><header><strong>{player.name}</strong><span>{bingoWeek || "CURRENT WEEK"}</span></header>{bingoTiers.map(tier => <div className={styles.miniBingoRow} key={tier.id}>{player.card[tier.id].map(team => <span key={team}>{team}</span>)}</div>)}</article>)}</div> : <p className={styles.communityEmpty}>No card is revealed yet. As soon as every member locks a complete card, all cards appear here together.</p>}
+              {bingoCards.length ? <div className={styles.communityGrid}>{bingoCards.map(player => <article className={styles.miniBingo} key={player.id}><header><strong>{player.name}</strong><span>{bingoWeek || "CURRENT WEEK"}</span></header>{bingoTiers.map(tier => <div className={styles.miniBingoRow} key={tier.id}>{player.card[tier.id].map(team => { const result = bingoTeamResults[team]; return <span key={team} className={result?.won === true ? styles.miniWon : result?.live ? styles.miniLive : result?.won === false ? styles.miniLost : ""}><b>{team}</b><small>{result?.opponent ? `vs ${result.opponent}` : "Scheduled"}</small><em>{result?.won === true ? "WIN" : result?.live ? "LIVE" : result?.won === false ? "FT" : "—"}</em></span>; })}</div>)}</article>)}</div> : <p className={styles.communityEmpty}>No card is revealed yet. As soon as every member locks a complete card, all cards appear here together.</p>}
               <div className={styles.bingoTableWrap}>
                 <div className={styles.bingoTableTitle}><span>{bingoWeek ? `WEEK OF ${bingoWeek} · SCOREBOARD` : "CURRENT WEEK · SCOREBOARD"}</span><strong>MAX 60 PTS</strong></div>
                 <div className={styles.bingoTableHead}><span>PLAYER</span><span>CARD</span><span>1ST CHINKO</span><span>2ND CHINKO</span><span>BINGO</span><span>TOTAL</span></div>
