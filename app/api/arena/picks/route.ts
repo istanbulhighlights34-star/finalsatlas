@@ -39,11 +39,17 @@ export async function PUT(request: Request) {
   const game = fixtures.find(item => key === `game:${item[0]}`);
   const round = game ? fixtureRound[game[0]] || 1 : null;
   const bonusRound = key === "topScorer" ? 1 : /^topScorer:[12]$/.test(key || "") ? Number((key as string).split(":")[1]) : null;
-  const submissionRound = game ? round : null;
   const bonusGames = bonusRound ? fixtures.filter(([id]) => fixtureRound[id] === bonusRound) : [];
-  const lock = game ? Date.parse(game[3]) - 120_000 : bonusRound ? Math.min(...bonusGames.map(([, , , tipoff]) => Date.parse(tipoff) - 120_000)) : firstLock;
-  const bingoKey = /^bingoCard:\\d{4}-\\d{2}-\\d{2}$/.test(key || "");
+  const bingoKey = /^bingoCard:\d{4}-\d{2}-\d{2}$/.test(key || "");
   if (!game && !bonusRound && !bingoKey && !["champion", "finalFour"].includes(key || "")) return jsonError("Unknown pick");
+  let lock = game ? Date.parse(game[3]) - 120_000 : bonusRound ? Math.min(...bonusGames.map(([, , , tipoff]) => Date.parse(tipoff) - 120_000)) : firstLock;
+  if (bingoKey) {
+    const weekKey = String(key).slice("bingoCard:".length);
+    const rows = await sql`SELECT MIN(kickoff) AS first_kickoff FROM arena_bingo_team_results WHERE week_key = ${weekKey}`;
+    const scheduled = rows[0]?.first_kickoff ? Date.parse(String(rows[0].first_kickoff)) - 120_000 : NaN;
+    // Safe fallback: Friday noon UTC. The live schedule normally replaces this with the actual first kick-off.
+    lock = Number.isFinite(scheduled) ? scheduled : Date.parse(`${weekKey}T00:00:00Z`) + (3 * 24 + 12) * 60 * 60 * 1000;
+  }
   if (Date.now() >= lock) return jsonError("This pick has closed", 409);
   if (game && selection !== "1" && selection !== "2") return jsonError("Invalid winner");
   if ((bonusRound || key === "champion") && selection && !teams.includes(selection as typeof teams[number])) return jsonError("Invalid team");
