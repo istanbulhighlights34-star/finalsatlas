@@ -351,17 +351,24 @@ export default function ArenaPage() {
           <button type="button" role="tab" aria-selected={footballGame === "bingo"} className={footballGame === "bingo" ? styles.footballGameActive : styles.footballGame} onClick={() => setFootballGame("bingo")}><span>02</span><strong>Atlas Bingo</strong><small>Build a 10-team card</small></button>
         </div>
         {footballGame === "picks" ? <div className={styles.footballSelection}>
-          <div className={styles.footballChoiceList} aria-label={footballCompetition === "leagues" ? "Select a domestic league" : "Select a European cup"}>
-            {(footballCompetition === "leagues" ? ["Süper Lig", "Premier League", "Bundesliga", "La Liga", "Ligue 1"] : ["Champions League", "Europa League", "Conference League"]).map((name) => {
-              const selected = footballCompetition === "leagues" ? footballLeague === name : footballCup === name;
-              return <button key={name} type="button" aria-pressed={selected} className={selected ? styles.footballChoiceActive : styles.footballChoice} onClick={() => footballCompetition === "leagues" ? setFootballLeague(name) : setFootballCup(name)}>{name}<span>{selected ? "SELECTED" : "OPEN"}</span></button>;
-            })}
+          <div className={styles.footballChoiceList} aria-label={footballCompetition === "leagues" ? "Select a domestic league" : "European Cups competition"}>
+            {footballCompetition === "leagues"
+              ? ["Süper Lig", "Premier League", "Bundesliga", "La Liga", "Ligue 1"].map((name) => {
+                  const selected = footballLeague === name;
+                  return <button key={name} type="button" aria-pressed={selected} className={selected ? styles.footballChoiceActive : styles.footballChoice} onClick={() => setFootballLeague(name)}>{name}<span>{selected ? "SELECTED" : "OPEN"}</span></button>;
+                })
+              : <button type="button" aria-pressed="true" className={styles.footballChoiceActive} onClick={() => setFootballCup("European Cups")}>European Cups<span>ALL THREE</span></button>}
           </div>
           <div className={styles.footballComing}>
-            <span className={styles.pulseKicker}>{footballCompetition === "leagues" ? footballLeague.toUpperCase() : footballCup.toUpperCase()}</span>
-            <h3>Fixtures are<br /><em>coming next.</em></h3>
-            <p>We’re preparing the football schedule and prediction room for this competition. Your football picks and standings will stay separate from EuroLeague.</p>
-            <div className={styles.emptySportMeta}><span>COMPETITION</span><strong>{footballCompetition === "leagues" ? "DOMESTIC LEAGUE" : "EUROPEAN CUP"}</strong><span>STATUS</span><strong>FIXTURE FEED IN PREPARATION</strong></div>
+            <span className={styles.pulseKicker}>{footballCompetition === "leagues" ? footballLeague.toUpperCase() : "CHAMPIONS LEAGUE · EUROPA LEAGUE · CONFERENCE LEAGUE"}</span>
+            <h3>{footballCompetition === "cups" ? <>One shared<br /><em>European arena.</em></> : <>Fixtures are<br /><em>coming next.</em></>}</h3>
+            <p>{footballCompetition === "cups" ? "Champions League, Europa League and Conference League matches belong to one shared competition. Members can follow their chosen club while everyone in the group predicts the same weekly fixtures." : "We’re preparing the football schedule and prediction room for this competition. Your football picks and standings will stay separate from EuroLeague."}</p>
+            {footballCompetition === "cups" && <div className={styles.europeanBonusRules} aria-label="European Cups bonus scoring">
+              <div><span>LEAGUE PHASE</span><strong>2 PTS</strong><p>For each team you correctly pick to finish in the top eight of a cup.</p></div>
+              <div><span>SEASON PICK</span><strong>5 PTS</strong><p>For correctly picking the champion of each cup.</p></div>
+              <small>No extra points are awarded for picking teams to advance in knockout ties.</small>
+            </div>}
+            <div className={styles.emptySportMeta}><span>COMPETITION</span><strong>{footballCompetition === "leagues" ? "DOMESTIC LEAGUE" : "THREE EUROPEAN CUPS · ONE ARENA"}</strong><span>STATUS</span><strong>FIXTURE FEED IN PREPARATION</strong></div>
           </div>
         </div> : <div className={styles.bingoBuilder}>
           <div className={styles.bingoIntro}>
