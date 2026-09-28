@@ -199,7 +199,7 @@ export default function ArenaPage() {
   const timeZone = now === null ? "Your local time" : new Intl.DateTimeFormat(undefined, { timeZoneName: "short" }).formatToParts(new Date(now)).find((part) => part.type === "timeZoneName")?.value || "Local time";
 
   async function submitCurrentRound() {
-    if (complete !== roundGames.length || !roundGames.length || roundSubmitted) return;
+    if (complete !== roundGames.length || !roundGames.length) return;
     setSubmittingRound(true);
     try {
       if (account) {
@@ -212,7 +212,7 @@ export default function ArenaPage() {
         localStorage.setItem(storageKey, JSON.stringify({ ...picks, submittedRounds: nextRounds }));
       }
       setSubmittedRounds(previous => previous.includes(2) ? previous : [...previous, 2]);
-      setMessage("Week 2 picks submitted and locked.");
+      setMessage("Week 2 picks saved. Each match stays editable until two minutes before tip-off.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Could not submit picks."); }
     finally { setSubmittingRound(false); }
   }
@@ -301,7 +301,7 @@ export default function ArenaPage() {
                 <div className={styles.matchInfo}><time dateTime={game.tipoff}>{now === null ? "Checking local time…" : formatTime(game.tipoff)}</time><span>{now === null ? "Checking" : game.result ? "Final" : game.liveScore ? `Live · ${game.status || "In progress"}` : locked ? "Locked" : "Open"}</span></div>
                 <div className={styles.matchTeams}><strong>{game.home}</strong><span>vs</span><strong>{game.away}</strong></div>
                 <div className={styles.resultButtons} aria-label={`${game.home} vs ${game.away} winner`}>
-                  {(["1", "2"] as const).map((choice) => <button key={choice} type="button" disabled={game.result ? true : (locked || roundSubmitted)} aria-label={choice === "1" ? `${game.home} wins` : `${game.away} wins`} aria-pressed={picks.games[game.id] === choice} className={game.result ? (game.result.home === game.result.away ? styles.finalScoreBox : ((choice === "1" && game.result.home > game.result.away) || (choice === "2" && game.result.away > game.result.home) ? styles.finalWinner : styles.finalScoreBox)) : game.liveScore ? styles.finalScoreBox : (picks.games[game.id] === choice ? styles.resultActive : styles.result)} onClick={() => {
+                  {(["1", "2"] as const).map((choice) => <button key={choice} type="button" disabled={game.result ? true : locked} aria-label={choice === "1" ? `${game.home} wins` : `${game.away} wins`} aria-pressed={picks.games[game.id] === choice} className={game.result ? (game.result.home === game.result.away ? styles.finalScoreBox : ((choice === "1" && game.result.home > game.result.away) || (choice === "2" && game.result.away > game.result.home) ? styles.finalWinner : styles.finalScoreBox)) : game.liveScore ? styles.finalScoreBox : (picks.games[game.id] === choice ? styles.resultActive : styles.result)} onClick={() => {
                     if (Date.now() + offset.current >= Date.parse(game.tipoff) - 120_000) { setNow(Date.now() + offset.current); return; }
                     update({ ...picks, games: { ...picks.games, [game.id]: choice } });
                   }}>{score ? (choice === "1" ? score.home : score.away) : choice}</button>)}
@@ -311,7 +311,7 @@ export default function ArenaPage() {
             })}</div>
             <div className={styles.roundBonusResult}><strong>ROUND 2 TOP-SCORING TEAM</strong><span>{week2BonusTeams === null ? "Awaiting all final scores" : week2BonusTeams.join(" · ")}</span><em>{week2BonusTeams === null ? "Bonus not settled" : week2BonusTeams.includes(picks.roundTopScorers["2"] || "") ? `Your pick · ${picks.roundTopScorers["2"]} · +5 pts` : picks.roundTopScorers["2"] ? `Your pick · ${picks.roundTopScorers["2"]} · 0 pts` : "No bonus pick · 0 pts"}</em></div>
             <p className={styles.status}>{complete} / {roundGames.length} selected · {openCount} games open · {saved ? account ? "Saved to account" : "Saved on this device" : "Saving or unavailable"}</p>
-            <div className={styles.submitBar}><span>{roundSubmitted ? "Week 2 picks are locked." : "Review your picks, then submit to lock this round."}</span><button className={styles.submitButton} type="button" disabled={roundSubmitted || submittingRound || !saved || complete !== roundGames.length || now === null} onClick={() => void submitCurrentRound()}>{roundSubmitted ? "Picks submitted ✓" : submittingRound ? "Submitting…" : "Submit week 2 picks"}</button></div>
+            <div className={styles.submitBar}><span>{roundSubmitted ? "Your picks are saved. Each match remains editable until two minutes before tip-off." : "Save your picks; each match remains editable until two minutes before tip-off."}</span><button className={styles.submitButton} type="button" disabled={submittingRound || !saved || complete !== roundGames.length || now === null} onClick={() => void submitCurrentRound()}>{submittingRound ? "Saving…" : "Save week 2 picks"}</button></div>
           </div>
         </article>
         <aside className={styles.seasonCard}>
