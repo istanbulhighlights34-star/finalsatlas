@@ -337,12 +337,13 @@ export default function ArenaPage() {
           <div className={styles.bingoIntro}>
             <span className={styles.pulseKicker}>WEEKLY 10-TEAM CARD</span>
             <h3>Build your Atlas Bingo</h3>
-            <p>Choose 3 favourites, 4 challengers and 3 outsiders. A winning team lights up your card. Complete rows for 10, 20 and 30 points — a full card is 60.</p>
-            <div className={styles.bingoScore}><span>CURRENT CARD</span><strong>{bingoPicks.elite.length + bingoPicks.middle.length + bingoPicks.outsider.length}<small> / 10 teams</small></strong><em>{bingoTotal} / 60 points ready</em></div>
+            <p>Choose 3 favourites, 4 challengers and 3 outsiders. A winning team lights up its square. The order of the rows does not matter.</p>
+            <div className={styles.bingoRules}><span><strong>1ST CHINKO</strong><em>Any completed row · +10</em></span><span><strong>2ND CHINKO</strong><em>Any two completed rows · +20</em></span><span><strong>BINGO</strong><em>All 10 teams · +30</em></span></div>
+            <div className={styles.bingoScore}><span>CURRENT CARD</span><strong>{bingoPicks.elite.length + bingoPicks.middle.length + bingoPicks.outsider.length}<small> / 10 teams</small></strong><em>Maximum weekly score · 60 points</em></div>
           </div>
           <div className={styles.bingoCard}>
             {bingoTiers.map((tier, index) => <section className={styles.bingoRow} key={tier.id}>
-              <div className={styles.bingoRowHead}><span>ROW 0{index + 1} · {tier.label}</span><strong>+{tier.points} PTS</strong><small>{bingoPicks[tier.id].length} / {tier.limit}</small></div>
+              <div className={styles.bingoRowHead}><span>ROW 0{index + 1} · {tier.label}</span><strong>CHINKO ROW</strong><small>{bingoPicks[tier.id].length} / {tier.limit}</small></div>
               <div className={styles.bingoTeams}>{tier.teams.map(team => {
                 const selected = bingoPicks[tier.id].includes(team);
                 return <button type="button" key={team} aria-pressed={selected} disabled={!selected && bingoPicks[tier.id].length >= tier.limit} className={selected ? styles.bingoTeamSelected : styles.bingoTeam} onClick={() => toggleBingoTeam(tier.id, team, tier.limit)}><span>{team.slice(0, 2).toUpperCase()}</span><strong>{team}</strong><em>{selected ? "ON CARD" : "SELECT"}</em></button>;
