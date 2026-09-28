@@ -599,6 +599,15 @@
 .footballComing h3 em { color:#d5ff3f; font-style:normal; }
 .footballComing p { max-width:520px; margin:0; color:#aab3a5; font:14px/1.5 Arial,sans-serif; }
 .footballComing .emptySportMeta { width:100%; }
+.europeanBonusRules { width:100%; max-width:720px; display:grid; grid-template-columns:1fr 1fr; gap:0; margin-top:26px; border:1px solid #3b4039; background:#111511; }
+.europeanBonusRules > div { padding:18px 20px; }
+.europeanBonusRules > div + div { border-left:1px solid #3b4039; }
+.europeanBonusRules span { display:block; color:#899286; font:700 9px Arial,sans-serif; letter-spacing:.14em; }
+.europeanBonusRules strong { display:block; margin-top:8px; color:#d5ff3f; font:700 25px/1 Arial,sans-serif; }
+.europeanBonusRules p { margin:9px 0 0; color:#aab3a5; font:12px/1.45 Arial,sans-serif; }
+.europeanBonusRules small { grid-column:1/-1; padding:12px 20px; border-top:1px solid #3b4039; color:#899286; font:11px/1.4 Arial,sans-serif; }
+@media (max-width:720px) { .europeanBonusRules { grid-template-columns:1fr; }.europeanBonusRules > div + div { border-left:0; border-top:1px solid #3b4039; }.europeanBonusRules small { grid-column:auto; } }
+
 @media (max-width:720px) {
  .footballHubHeader { align-items:flex-start; flex-direction:column; padding:22px 18px; gap:16px; }
  .footballModes { grid-template-columns:1fr; }
