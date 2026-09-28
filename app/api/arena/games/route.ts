@@ -57,7 +57,10 @@ function score(value: ProviderEvent["intHomeScore"]): number | null {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
+let providerSchemaReady: Promise<void> | null = null;
+
 async function ensureProviderTables(sql: ReturnType<typeof database>) {
+  if (!providerSchemaReady) providerSchemaReady = (async () => {
   await sql`CREATE TABLE IF NOT EXISTS arena_provider_sync (
     source text PRIMARY KEY,
     last_synced_at timestamptz,
@@ -74,6 +77,13 @@ async function ensureProviderTables(sql: ReturnType<typeof database>) {
   )`;
   await sql`CREATE INDEX IF NOT EXISTS arena_provider_games_updated
     ON arena_provider_games (updated_at DESC)`;
+  })();
+  try {
+    await providerSchemaReady;
+  } catch (error) {
+    providerSchemaReady = null;
+    throw error;
+  }
 }
 
 async function trySync(sql: ReturnType<typeof database>) {
