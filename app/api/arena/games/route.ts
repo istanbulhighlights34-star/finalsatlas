@@ -57,6 +57,25 @@ function score(value: ProviderEvent["intHomeScore"]): number | null {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
+async function ensureProviderTables(sql: ReturnType<typeof database>) {
+  await sql`CREATE TABLE IF NOT EXISTS arena_provider_sync (
+    source text PRIMARY KEY,
+    last_synced_at timestamptz,
+    lease_until timestamptz,
+    last_error text
+  )`;
+  await sql`CREATE TABLE IF NOT EXISTS arena_provider_games (
+    game_id text PRIMARY KEY,
+    provider_event_id text,
+    status text,
+    home_score integer CHECK (home_score IS NULL OR home_score >= 0),
+    away_score integer CHECK (away_score IS NULL OR away_score >= 0),
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )`;
+  await sql`CREATE INDEX IF NOT EXISTS arena_provider_games_updated
+    ON arena_provider_games (updated_at DESC)`;
+}
+
 async function trySync(sql: ReturnType<typeof database>) {
   const lease = await sql`
     INSERT INTO arena_provider_sync (source, last_synced_at, lease_until)
@@ -142,6 +161,7 @@ export async function GET() {
 
   try {
     const sql = database();
+    await ensureProviderTables(sql);
     await trySync(sql);
     const [providerRows, resultRows, syncRows] = await Promise.all([
       sql`SELECT game_id, status, home_score, away_score, updated_at FROM arena_provider_games`,
