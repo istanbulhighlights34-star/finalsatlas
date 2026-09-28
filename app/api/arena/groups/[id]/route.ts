@@ -82,5 +82,5 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const startedAt = access[0].started_at ? new Date(String(access[0].started_at)).toISOString() : null;
   const pickLockAt = startedAt ? new Date(Date.parse(startedAt) + 7 * 24 * 60 * 60 * 1000).toISOString() : null;
   const picksOpen = !pickLockAt || Date.now() < Date.parse(pickLockAt);
-  return Response.json({ name: access[0].name, startedAt, pickLockAt, picksOpen, canStart: String(access[0].owner_id) === String(user.id) && !startedAt, standings: scores, bingoWeek: bingoWeekKey, bingoCards, bingoStandings, bingoReady: lockedCards.filter(Boolean).length, bingoPlayers: members.length, scoredGames: results.length, totalGames: fixtures.length }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json({ name: access[0].name, members: members.map(m => ({ id: m.id, name: m.nickname || `Player ${String(m.id).slice(0, 6)}`, email: m.email })), startedAt, pickLockAt, picksOpen, canStart: String(access[0].owner_id) === String(user.id) && !startedAt, standings: scores, bingoWeek: bingoWeekKey, bingoCards, bingoStandings, bingoReady: lockedCards.filter(Boolean).length, bingoPlayers: members.length, scoredGames: results.length, totalGames: fixtures.length }, { headers: { "Cache-Control": "no-store" } });
 }
