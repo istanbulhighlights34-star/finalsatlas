@@ -71,7 +71,7 @@ export async function PUT(request: Request) {
     let card: unknown;
     try { card = JSON.parse(selection || ""); } catch { return jsonError("Invalid Bingo card"); }
     const value = card as { elite?: unknown; middle?: unknown; outsider?: unknown };
-    const valid = value && Array.isArray(value.elite) && value.elite.length === 4 && Array.isArray(value.middle) && value.middle.length === 4 && Array.isArray(value.outsider) && value.outsider.length === 3
+    const valid = value && Array.isArray(value.elite) && value.elite.length === 5 && Array.isArray(value.middle) && value.middle.length === 4 && Array.isArray(value.outsider) && value.outsider.length === 3
       && [...value.elite, ...value.middle, ...value.outsider].every(team => typeof team === "string" && team.length > 1 && team.length < 60);
     if (!valid) return jsonError("Complete all three rows before locking your card.");
   }
