@@ -24,7 +24,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       if (!result) continue;
       settled++;
       const winner = Number(result.home_score) > Number(result.away_score) ? "1" : "2";
-      if (byKey.get(`game:${game[0]}`) === winner) points += 5;
+      if (byKey.get(`game:${game[0]}`) === winner) points += 2;
     }
     if (results.length === fixtures.length) {
       const totals = new Map<string, number>();
