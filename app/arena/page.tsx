@@ -41,14 +41,14 @@ const formatTime = (iso: string) => new Intl.DateTimeFormat(undefined, {
 }).format(new Date(iso));
 
 const bingoTiers = [
-  { id: "elite", label: "TOP TIER", limit: 3, points: 10, teams: ["Manchester City", "Bayern Munich", "Paris Saint-Germain", "Real Madrid", "Barcelona", "Inter"] },
+  { id: "elite", label: "TOP TIER", limit: 4, points: 10, teams: ["Manchester City", "Bayern Munich", "Paris Saint-Germain", "Real Madrid", "Barcelona", "Inter"] },
   { id: "middle", label: "CHALLENGERS", limit: 4, points: 20, teams: ["Newcastle", "Başakşehir", "Hoffenheim", "Real Sociedad", "Real Betis", "Atalanta"] },
   { id: "outsider", label: "OUTSIDERS", limit: 3, points: 30, teams: ["Çorum FK", "Gaziantep", "Angers", "Crystal Palace", "Lecce", "St. Pauli"] },
 ] as const;
 type BingoTier = typeof bingoTiers[number]["id"];
 const sharedCardPreview: { id: string; name: string; card: Record<BingoTier, string[]> }[] = [
-  { id: "preview-1", name: "Mert", card: { elite: ["Manchester City", "Real Madrid", "Inter"], middle: ["Newcastle", "Real Betis", "Atalanta", "Hoffenheim"], outsider: ["Gaziantep", "Crystal Palace", "Lecce"] } },
-  { id: "preview-2", name: "Deniz", card: { elite: ["Bayern Munich", "Barcelona", "Paris Saint-Germain"], middle: ["Başakşehir", "Real Sociedad", "Newcastle", "Atalanta"], outsider: ["Çorum FK", "Angers", "St. Pauli"] } },
+  { id: "preview-1", name: "Mert", card: { elite: ["Manchester City", "Real Madrid", "Inter", "Barcelona"], middle: ["Newcastle", "Real Betis", "Atalanta", "Hoffenheim"], outsider: ["Gaziantep", "Crystal Palace", "Lecce"] } },
+  { id: "preview-2", name: "Deniz", card: { elite: ["Bayern Munich", "Barcelona", "Paris Saint-Germain", "Real Madrid"], middle: ["Başakşehir", "Real Sociedad", "Newcastle", "Atalanta"], outsider: ["Çorum FK", "Angers", "St. Pauli"] } },
 ];
 
 export default function ArenaPage() {
@@ -89,6 +89,13 @@ export default function ArenaPage() {
   const [leagueStatus, setLeagueStatus] = useState<{ startedAt: string | null; pickLockAt: string | null; picksOpen: boolean; canStart: boolean }>({ startedAt: null, pickLockAt: null, picksOpen: true, canStart: false });
   const [startingLeague, setStartingLeague] = useState(false);
   const [standings, setStandings] = useState<{ name: string; points: number; picks: number }[]>([]);
+  const [circleMembers, setCircleMembers] = useState<{ id: string; name: string; email: string }[]>([]);
+  const [competitionName, setCompetitionName] = useState("");
+  const [competitionSport, setCompetitionSport] = useState<"football" | "basketball">("football");
+  const [competitionGame, setCompetitionGame] = useState("bingo");
+  const [competitionPlayers, setCompetitionPlayers] = useState<string[]>([]);
+  const [competitions, setCompetitions] = useState<{ id: string; name: string; sport: string; game_type: string; season: string; players: number }[]>([]);
+  const [creatingCompetition, setCreatingCompetition] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
   const offset = useRef(0);
   const teams = games.length ? [...new Set(games.flatMap((game) => [game.home, game.away]))] : initialTeams;
@@ -233,6 +240,11 @@ export default function ArenaPage() {
         const data = await response.json();
         setLeagueStatus({ startedAt: data.startedAt || null, pickLockAt: data.pickLockAt || null, picksOpen: data.picksOpen !== false, canStart: !!data.canStart });
         setStandings(data.standings || []);
+        const members = Array.isArray(data.members) ? data.members : [];
+        setCircleMembers(members);
+        setCompetitionPlayers(previous => previous.length ? previous.filter(id => members.some((member: { id: string }) => member.id === id)) : members.map((member: { id: string }) => member.id));
+        const competitionResponse = await fetch(`/api/arena/competitions?groupId=${selectedGroup}`, { cache: "no-store" });
+        if (competitionResponse.ok) setCompetitions((await competitionResponse.json()).competitions || []);
         setBingoCards(data.bingoCards || []);
         setBingoReady(data.bingoReady || 0);
         setBingoPlayers(data.bingoPlayers || 0);
@@ -403,6 +415,25 @@ export default function ArenaPage() {
         </div>}
         {message && <p role="status">{message}</p>}
       </section>}
+      {account && selectedGroup && <section className={styles.competitionDesk} aria-label="Competition creator">
+        <div className={styles.competitionDeskHead}><div><span className={styles.pulseKicker}>COMPETITION DESK</span><h2>Create a competition</h2><p>Choose the game, then select exactly which circle members will take part.</p></div><strong>{circleMembers.length} CIRCLE MEMBERS</strong></div>
+        <form className={styles.competitionForm} onSubmit={async event => {
+          event.preventDefault(); setCreatingCompetition(true);
+          try {
+            const response = await fetch("/api/arena/competitions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ groupId: selectedGroup, name: competitionName, sport: competitionSport, gameType: competitionGame, season: "2026/27", playerIds: competitionPlayers }) });
+            const data = await response.json();
+            if (!response.ok) { setMessage(data.error || "Could not create competition."); return; }
+            setCompetitions(previous => [data.competition, ...previous]); setCompetitionName(""); setMessage(`${data.competition.name} created with ${data.competition.players} players.`);
+          } catch { setMessage("Could not create competition."); } finally { setCreatingCompetition(false); }
+        }}>
+          <label><span>COMPETITION NAME</span><input required maxLength={60} value={competitionName} onChange={event => setCompetitionName(event.target.value)} placeholder="Friday Night Bingo" /></label>
+          <label><span>SPORT</span><select value={competitionSport} onChange={event => { const sport = event.target.value as "football" | "basketball"; setCompetitionSport(sport); setCompetitionGame(sport === "football" ? "bingo" : "euroleague"); }}><option value="football">Football</option><option value="basketball">Basketball</option></select></label>
+          <label><span>GAME</span><select value={competitionGame} onChange={event => setCompetitionGame(event.target.value)}>{competitionSport === "football" ? <><option value="bingo">Atlas Bingo</option><option value="score-picks">Score Picks</option></> : <option value="euroleague">EuroLeague</option>}</select></label>
+          <fieldset><legend>SELECT PLAYERS · {competitionPlayers.length} CHOSEN</legend><div className={styles.competitionPlayers}>{circleMembers.map(player => <label key={player.id}><input type="checkbox" checked={competitionPlayers.includes(player.id)} onChange={event => setCompetitionPlayers(previous => event.target.checked ? [...new Set([...previous, player.id])] : previous.filter(id => id !== player.id))} /><span><strong>{player.name}</strong><small>{player.email}</small></span></label>)}</div></fieldset>
+          <button type="submit" disabled={creatingCompetition || !competitionName.trim() || !competitionPlayers.length}>{creatingCompetition ? "CREATING…" : "CREATE COMPETITION"}</button>
+        </form>
+        {!!competitions.length && <div className={styles.competitionList}><div><span>ACTIVE COMPETITIONS</span><strong>{competitions.length}</strong></div>{competitions.map(item => <article key={item.id}><span>{item.sport.toUpperCase()}</span><strong>{item.name}</strong><em>{item.game_type.replace("-", " ").toUpperCase()} · {item.players} PLAYERS</em></article>)}</div>}
+      </section>}
       <section className={styles.pulseDashboard} aria-label="Arena Pulse overview">
         <div className={styles.pulseWelcome}>
           <span className={styles.pulseKicker}>ARENA PULSE</span>
@@ -440,7 +471,7 @@ export default function ArenaPage() {
         </div>
         <div className={styles.footballGameModes} role="tablist" aria-label="Football game mode">
           <button type="button" role="tab" aria-selected={footballGame === "picks"} className={footballGame === "picks" ? styles.footballGameActive : styles.footballGame} onClick={() => setFootballGame("picks")}><span>01</span><strong>Score Picks</strong><small>Predict match results</small></button>
-          <button type="button" role="tab" aria-selected={footballGame === "bingo"} className={footballGame === "bingo" ? styles.footballGameActive : styles.footballGame} onClick={() => setFootballGame("bingo")}><span>02</span><strong>Atlas Bingo</strong><small>Build a 10-team card</small></button>
+          <button type="button" role="tab" aria-selected={footballGame === "bingo"} className={footballGame === "bingo" ? styles.footballGameActive : styles.footballGame} onClick={() => setFootballGame("bingo")}><span>02</span><strong>Atlas Bingo</strong><small>Build an 11-team card</small></button>
         </div>
         {footballGame === "picks" ? <div className={styles.footballSelection}>
           <div className={styles.footballChoiceList} aria-label={footballCompetition === "leagues" ? "Select a domestic league" : "European Cups competition"}>
@@ -477,9 +508,9 @@ export default function ArenaPage() {
           <div className={styles.bingoIntro}>
             <span className={styles.pulseKicker}>WEEKLY 10-TEAM CARD</span>
             <h3>Build your Atlas Bingo</h3>
-            <p>Choose 3 favourites, 4 challengers and 3 outsiders. Cards open Tuesday, lock two minutes before Friday’s first listed match, and score through Monday. A winning team lights up its square.</p>
+            <p>Choose 4 favourites, 4 challengers and 3 outsiders. The harder outsider row stays shorter for balance. Cards open Tuesday, lock two minutes before Friday’s first listed match, and score through Monday.</p>
             <div className={styles.bingoRules}><span><strong>1ST CHINKO</strong><em>Any completed row · +10</em></span><span><strong>2ND CHINKO</strong><em>Any two completed rows · +20</em></span><span><strong>BINGO</strong><em>All 10 teams · +30</em></span></div>
-            <div className={styles.bingoScore}><span>CURRENT CARD</span><strong>{bingoPicks.elite.filter(Boolean).length + bingoPicks.middle.filter(Boolean).length + bingoPicks.outsider.filter(Boolean).length}<small> / 10 teams</small></strong><em>Maximum weekly score · 60 points</em></div>
+            <div className={styles.bingoScore}><span>CURRENT CARD</span><strong>{bingoPicks.elite.filter(Boolean).length + bingoPicks.middle.filter(Boolean).length + bingoPicks.outsider.filter(Boolean).length}<small> / 11 teams</small></strong><em>Maximum weekly score · 60 points</em></div>
           </div>
           <div className={styles.bingoCard}>
             <section className={styles.bingoFixtures} aria-label="Friday to Monday fixtures">
@@ -507,7 +538,7 @@ export default function ArenaPage() {
                   return <label className={slotClass} key={slot}><span>{teamResult?.opponent ? `vs ${teamResult.opponent}` : String(slot + 1).padStart(2, "0")}</span><select aria-label={`${tier.label} team ${slot + 1}`} value={selected} disabled={bingoSaved} onChange={event => updateBingoSlot(tier.id, slot, event.target.value)}><option value="">Choose team</option>{tier.teams.map(team => <option key={team} value={team} disabled={used.has(team) && team !== selected}>{team}</option>)}</select><em>{teamResult?.won === true ? "WIN" : teamResult?.live ? "LIVE" : finalLost ? "FT" : selected ? selected.slice(0, 2).toUpperCase() : "FA"}</em></label>;
                 })}</div>
               </section>)}
-              <div className={styles.bingoSave}><div><strong>{bingoSaved ? "Your card is locked." : bingoComplete ? "Your 10-team card is ready." : "Complete all three rows to lock your card."}</strong><span>Cards stay private until every player in the circle has locked a complete card.</span></div><button type="button" disabled={!bingoComplete || bingoSaved || !bingoWeek} onClick={() => void lockBingoCard()}>{bingoSaved ? "CARD LOCKED" : "LOCK MY CARD"}</button></div>
+              <div className={styles.bingoSave}><div><strong>{bingoSaved ? "Your card is locked." : bingoComplete ? "Your 11-team card is ready." : "Complete all three rows to lock your card."}</strong><span>Cards stay private until every player in the circle has locked a complete card.</span></div><button type="button" disabled={!bingoComplete || bingoSaved || !bingoWeek} onClick={() => void lockBingoCard()}>{bingoSaved ? "CARD LOCKED" : "LOCK MY CARD"}</button></div>
             </div>
             {!selectedGroup && <section className={styles.communityCards} aria-label="Shared card preview">
               <div className={styles.communityHead}><div><span className={styles.pulseKicker}>SHARED VIEW PREVIEW</span><h3>How your circle will look</h3></div><strong>OPENS WHEN ALL CARDS LOCK</strong></div>
