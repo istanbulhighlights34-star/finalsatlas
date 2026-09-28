@@ -775,3 +775,43 @@
   .bingoFixtureTeams { grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr); gap:6px; }
   .bingoFixtureTeams img { width:24px; height:24px; flex-basis:24px; }
 }
+
+
+/* Institutional Arena home */
+.arenaInstitution { margin:24px 0; border:1px solid #434c40; background:linear-gradient(145deg,#1b211a,#111511); box-shadow:0 22px 50px rgba(0,0,0,.2); }
+.arenaInstitutionHead { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(220px,.7fr); gap:30px; padding:34px; border-bottom:1px solid #3a4238; }
+.arenaInstitutionHead h2 { max-width:720px; margin:14px 0 12px; color:#f4f3ec; font:700 clamp(38px,5vw,68px)/.88 Arial,sans-serif; letter-spacing:-.075em; }
+.arenaInstitutionHead p { max-width:620px; margin:0; color:#a9b1a5; font:15px/1.5 Arial,sans-serif; }
+.arenaIdentity { align-self:stretch; display:flex; flex-direction:column; justify-content:space-between; gap:14px; padding:20px; border:1px solid #4a5546; background:#20271e; }
+.arenaIdentity span,.arenaIdentity em { color:#899385; font:700 9px Arial,sans-serif; letter-spacing:.13em; font-style:normal; }
+.arenaIdentity strong { color:#d5ff3f; font:700 21px/1 Arial,sans-serif; overflow-wrap:anywhere; }
+.arenaPath { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
+.arenaPath article { min-height:220px; display:flex; flex-direction:column; align-items:flex-start; padding:26px; border-right:1px solid #3a4238; }
+.arenaPath article:last-child { border-right:0; }
+.arenaPath article > span { color:#d5ff3f; font:700 10px Arial,sans-serif; letter-spacing:.12em; }
+.arenaPath article strong { margin:30px 0 10px; color:#f0f2eb; font:700 23px/.95 Arial,sans-serif; letter-spacing:-.045em; }
+.arenaPath article p { margin:0; color:#909a8e; font:13px/1.45 Arial,sans-serif; }
+.arenaPath article a { margin-top:auto; padding-top:22px; color:#d5ff3f; font:700 9px Arial,sans-serif; letter-spacing:.09em; text-transform:uppercase; }
+.arenaDirectory { border-top:1px solid #3a4238; }
+.arenaDirectoryTitle { display:flex; justify-content:space-between; padding:14px 22px; color:#929b8e; font:700 9px Arial,sans-serif; letter-spacing:.12em; }
+.arenaDirectoryTitle strong { color:#d5ff3f; }
+.arenaGameCards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border-top:1px solid #3a4238; }
+.arenaGameCards article { position:relative; min-height:155px; padding:22px; border-right:1px solid #3a4238; }
+.arenaGameCards article:last-child { border-right:0; }
+.arenaGameCards span,.arenaGameCards b { color:#d5ff3f; font:700 8px Arial,sans-serif; letter-spacing:.12em; }
+.arenaGameCards h3 { margin:24px 0 8px; color:#f4f3ec; font:700 24px/.95 Arial,sans-serif; letter-spacing:-.05em; }
+.arenaGameCards p { max-width:260px; margin:0; color:#929b8e; font:12px/1.4 Arial,sans-serif; }
+.arenaGameCards b { position:absolute; top:22px; right:22px; color:#7f897c; }
+.invitationPolicy { display:grid; grid-template-columns:240px minmax(0,1fr); gap:24px; align-items:center; padding:20px 22px; border-top:1px solid #3a4238; background:#222b1e; }
+.invitationPolicy strong { color:#d5ff3f; font:700 10px Arial,sans-serif; letter-spacing:.12em; }
+.invitationPolicy p { margin:0; color:#b5bdb0; font:13px/1.5 Arial,sans-serif; }
+@media (max-width:720px) {
+ .arenaInstitutionHead { grid-template-columns:1fr; padding:24px 18px; }
+ .arenaInstitutionHead h2 { font-size:44px; }
+ .arenaPath,.arenaGameCards { grid-template-columns:1fr; }
+ .arenaPath article { min-height:180px; border-right:0; border-bottom:1px solid #3a4238; }
+ .arenaPath article:last-child { border-bottom:0; }
+ .arenaGameCards article { min-height:135px; border-right:0; border-bottom:1px solid #3a4238; }
+ .arenaGameCards article:last-child { border-bottom:0; }
+ .invitationPolicy { grid-template-columns:1fr; gap:8px; }
+}
