@@ -186,7 +186,7 @@ export default function ArenaPage() {
   const openCount = now === null ? 0 : roundGames.filter((game) => now < Date.parse(game.tipoff) - 120_000).length;
   const roundSubmitted = submittedRounds.includes(2);
   const round2FirstLock = roundGames.length ? Math.min(...roundGames.map(game => Date.parse(game.tipoff) - 120_000)) : Infinity;
-  const round2BonusOpen = now !== null && now < round2FirstLock && !roundSubmitted;
+  const round2BonusOpen = now !== null && now < round2FirstLock;
   const getTopScoringTeams = (roundMatches: Game[]) => {
     if (!roundMatches.length || roundMatches.some(game => !game.result)) return null;
     const totals = new Map<string, number>();
@@ -309,16 +309,16 @@ export default function ArenaPage() {
                 {game.result && <p className={styles.pickFeedback}>{picks.games[game.id] ? ((picks.games[game.id] === "1" && game.result.home > game.result.away) || (picks.games[game.id] === "2" && game.result.away > game.result.home) ? "Correct · +2 points" : "Incorrect · 0 points") : "No pick · 0 points"}</p>}
               </div>;
             })}</div>
-            {week2BonusTeams !== null && <div className={styles.roundBonusResult}><strong>ROUND 2 TOP-SCORING TEAM</strong><span>{week2BonusTeams.join(" · ")}</span><em>{week2BonusTeams.includes(picks.roundTopScorers["2"] || "") ? `Your pick · ${picks.roundTopScorers["2"]} · +5 pts` : picks.roundTopScorers["2"] ? `Your pick · ${picks.roundTopScorers["2"]} · 0 pts` : "No bonus pick · 0 pts"}</em></div>}
+            <div className={styles.roundBonusResult}><strong>ROUND 2 TOP-SCORING TEAM</strong><span>{week2BonusTeams === null ? "Awaiting all final scores" : week2BonusTeams.join(" · ")}</span><em>{week2BonusTeams === null ? "Bonus not settled" : week2BonusTeams.includes(picks.roundTopScorers["2"] || "") ? `Your pick · ${picks.roundTopScorers["2"]} · +5 pts` : picks.roundTopScorers["2"] ? `Your pick · ${picks.roundTopScorers["2"]} · 0 pts` : "No bonus pick · 0 pts"}</em></div>
             <p className={styles.status}>{complete} / {roundGames.length} selected · {openCount} games open · {saved ? account ? "Saved to account" : "Saved on this device" : "Saving or unavailable"}</p>
             <div className={styles.submitBar}><span>{roundSubmitted ? "Week 2 picks are locked." : "Review your picks, then submit to lock this round."}</span><button className={styles.submitButton} type="button" disabled={roundSubmitted || submittingRound || !saved || complete !== roundGames.length || now === null} onClick={() => void submitCurrentRound()}>{roundSubmitted ? "Picks submitted ✓" : submittingRound ? "Submitting…" : "Submit week 2 picks"}</button></div>
           </div>
         </article>
         <aside className={styles.seasonCard}>
           <div className={styles.cardTop}><span>ROUND 02 BONUS</span><span>+5 POINTS</span></div>
-          <div className={styles.sideBody}><h2>Top-scoring team</h2><p className={styles.muted}>Which team scores the most points in Round 2? A tie at the top counts for each tied team. This pick closes before the first game.</p>
+          <div className={styles.sideBody}><h2>Top-scoring team</h2><p className={styles.muted}>Which team scores the most points in Round 2? A tie at the top counts for each tied team. This pick stays open until the first game starts, even after you submit your match picks.</p>
             <label className={styles.selectLabel} htmlFor="top-scorer">Choose a team</label>
-            <select id="top-scorer" value={picks.roundTopScorers["2"] || ""} disabled={!round2BonusOpen} onChange={(event) => { if (Date.now() + offset.current < round2FirstLock && !roundSubmitted) update({ ...picks, roundTopScorers: { ...picks.roundTopScorers, "2": event.target.value } }); else setNow(Date.now() + offset.current); }}><option value="">Select a team</option>{teams.map((team) => <option key={team}>{team}</option>)}</select>
+            <select id="top-scorer" value={picks.roundTopScorers["2"] || ""} disabled={!round2BonusOpen} onChange={(event) => { if (Date.now() + offset.current < round2FirstLock) update({ ...picks, roundTopScorers: { ...picks.roundTopScorers, "2": event.target.value } }); else setNow(Date.now() + offset.current); }}><option value="">Select a team</option>{teams.map((team) => <option key={team}>{team}</option>)}</select>
             <p className={styles.status}>{round2BonusOpen ? `Locks ${formatTime(new Date(round2FirstLock).toISOString())}` : now === null ? "Checking deadline…" : "Round 2 bonus locked"}</p>
           </div>
         </aside>
