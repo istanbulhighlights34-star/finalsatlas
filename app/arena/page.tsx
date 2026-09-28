@@ -71,6 +71,8 @@ export default function ArenaPage() {
   const [bingoPlayers, setBingoPlayers] = useState(0);
   const [bingoStandings, setBingoStandings] = useState<{ id: string; name: string; locked: boolean; firstChinko: number; secondChinko: number; bingo: number; weeklyTotal: number }[]>([]);
   const [bingoTeamResults, setBingoTeamResults] = useState<Record<string, { opponent?: string; status?: string; won?: boolean | null; live?: boolean }>>({});
+  const [bingoWeek, setBingoWeek] = useState("");
+  const [accountPickValues, setAccountPickValues] = useState<Record<string, string>>({});
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const [groupName, setGroupName] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
@@ -145,13 +147,7 @@ export default function ArenaPage() {
           const values = (await savedPicks.json()).picks as Record<string, string>;
           setPicks({ games: Object.fromEntries(Object.entries(values).filter(([key]) => key.startsWith("game:")).map(([key, value]) => [key.slice(5), value as "1" | "2"])), topScorer: values["topScorer:1"] || values.topScorer || "", roundTopScorers: { "1": values["topScorer:1"] || values.topScorer || "", "2": values["topScorer:2"] || "" }, champion: values.champion || "", finalFour: JSON.parse(values.finalFour || "[]") });
           setSubmittedRounds([1, 2].filter(round => values[`roundSubmitted:${round}`] === "submitted"));
-          if (values["bingoCard:week-1"]) {
-            try {
-              const card = JSON.parse(values["bingoCard:week-1"]) as Record<BingoTier, string[]>;
-              setBingoPicks(card);
-              setBingoSaved(true);
-            } catch { /* ignore malformed historical card */ }
-          }
+          setAccountPickValues(values);
         }
         if (membership.ok) setGroups((await membership.json()).groups);
         const invite = inviteFromUrl || localStorage.getItem("finalsatlas-pending-invite");
@@ -180,13 +176,21 @@ export default function ArenaPage() {
       try {
         const response = await fetch("/api/arena/bingo", { cache: "no-store" });
         const data = await response.json();
-        if (active && Array.isArray(data.teams)) setBingoTeamResults(Object.fromEntries(data.teams.map((team: { team: string }) => [team.team, team])));
+        if (active && Array.isArray(data.teams)) {
+          setBingoTeamResults(Object.fromEntries(data.teams.map((team: { team: string }) => [team.team, team])));
+          const week = String(data.week || "");
+          setBingoWeek(week);
+          const stored = accountPickValues[`bingoCard:${week}`] || (!account ? localStorage.getItem(`finalsatlas-bingo-${week}`) : "");
+          if (stored) {
+            try { setBingoPicks(JSON.parse(stored)); setBingoSaved(true); } catch { /* ignore malformed saved card */ }
+          }
+        }
       } catch { /* keep the card usable while the score feed is unavailable */ }
     }
     void refreshBingoResults();
     const interval = setInterval(() => { void refreshBingoResults(); }, 15 * 60_000);
     return () => { active = false; clearInterval(interval); };
-  }, []);
+  }, [accountPickValues, account]);
 
   useEffect(() => {
     if (!selectedGroup) return;
@@ -257,11 +261,11 @@ export default function ArenaPage() {
   async function lockBingoCard() {
     if (!bingoComplete || bingoSaved) return;
     if (account) {
-      const response = await fetch("/api/arena/picks", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "bingoCard:week-1", selection: JSON.stringify(bingoPicks) }) });
+      const response = await fetch("/api/arena/picks", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: `bingoCard:${bingoWeek}`, selection: JSON.stringify(bingoPicks) }) });
       const data = await response.json();
       if (!response.ok) { setMessage(data.error || "Could not lock Bingo card."); return; }
     } else {
-      localStorage.setItem("finalsatlas-bingo-week-1", JSON.stringify(bingoPicks));
+      localStorage.setItem(`finalsatlas-bingo-${bingoWeek}`, JSON.stringify(bingoPicks));
     }
     setBingoSaved(true);
     setMessage(account ? "Bingo card locked. Group cards open when every player is ready." : "Bingo card locked on this device.");
@@ -411,9 +415,9 @@ export default function ArenaPage() {
             </div>
             {selectedGroup && <section className={styles.communityCards}>
               <div className={styles.communityHead}><div><span className={styles.pulseKicker}>CIRCLE CARDS</span><h3>{bingoCards.length ? "The cards are open" : "Waiting for every player"}</h3></div><strong>{bingoReady} / {bingoPlayers} LOCKED</strong></div>
-              {bingoCards.length ? <div className={styles.communityGrid}>{bingoCards.map(player => <article className={styles.miniBingo} key={player.id}><header><strong>{player.name}</strong><span>WEEK 01</span></header>{bingoTiers.map(tier => <div className={styles.miniBingoRow} key={tier.id}>{player.card[tier.id].map(team => <span key={team}>{team}</span>)}</div>)}</article>)}</div> : <p className={styles.communityEmpty}>No card is revealed yet. As soon as every member locks a complete card, all cards appear here together.</p>}
+              {bingoCards.length ? <div className={styles.communityGrid}>{bingoCards.map(player => <article className={styles.miniBingo} key={player.id}><header><strong>{player.name}</strong><span>{bingoWeek || "CURRENT WEEK"}</span></header>{bingoTiers.map(tier => <div className={styles.miniBingoRow} key={tier.id}>{player.card[tier.id].map(team => <span key={team}>{team}</span>)}</div>)}</article>)}</div> : <p className={styles.communityEmpty}>No card is revealed yet. As soon as every member locks a complete card, all cards appear here together.</p>}
               <div className={styles.bingoTableWrap}>
-                <div className={styles.bingoTableTitle}><span>WEEK 01 · SCOREBOARD</span><strong>MAX 60 PTS</strong></div>
+                <div className={styles.bingoTableTitle}><span>{bingoWeek ? `WEEK OF ${bingoWeek} · SCOREBOARD` : "CURRENT WEEK · SCOREBOARD"}</span><strong>MAX 60 PTS</strong></div>
                 <div className={styles.bingoTableHead}><span>PLAYER</span><span>CARD</span><span>1ST CHINKO</span><span>2ND CHINKO</span><span>BINGO</span><span>TOTAL</span></div>
                 <ol className={styles.bingoTable}>{bingoStandings.map((player, index) => <li key={player.id}><span><b>{index + 1}</b>{player.name}</span><em className={player.locked ? styles.cardLocked : styles.cardBuilding}>{player.locked ? "LOCKED" : "BUILDING"}</em><span>{player.firstChinko}<small> / 10</small></span><span>{player.secondChinko}<small> / 20</small></span><span>{player.bingo}<small> / 30</small></span><strong>{player.weeklyTotal}</strong></li>)}</ol>
                 {!bingoStandings.length && <p className={styles.communityEmpty}>The weekly table appears when your circle has players.</p>}
