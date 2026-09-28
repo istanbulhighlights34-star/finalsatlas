@@ -606,6 +606,14 @@
 .europeanBonusRules strong { display:block; margin-top:8px; color:#d5ff3f; font:700 25px/1 Arial,sans-serif; }
 .europeanBonusRules p { margin:9px 0 0; color:#aab3a5; font:12px/1.45 Arial,sans-serif; }
 .europeanBonusRules small { grid-column:1/-1; padding:12px 20px; border-top:1px solid #3b4039; color:#899286; font:11px/1.4 Arial,sans-serif; }
+@media (max-width:720px) {
+ .europeanFixture { grid-template-columns:1fr; gap:8px; padding:12px; }
+ .europeanFixtureMeta { flex-direction:row; justify-content:space-between; }
+ .europeanFixtureTeams { gap:5px; }
+ .europeanFixtureTeams span { gap:5px; font-size:10px; }
+ .europeanFixtureTeams img { width:18px; height:18px; flex-basis:18px; }
+ .europeanFixtureHead { padding:12px; }
+}
 .europeanFixturePreview { width:100%; max-width:720px; margin-top:22px; border:1px solid #3b4039; background:#111511; }
 .europeanFixtureHead { display:flex; justify-content:space-between; gap:14px; padding:14px 18px; border-bottom:1px solid #3b4039; }
 .europeanFixtureHead strong { color:#f5f3eb; font:700 10px Arial,sans-serif; letter-spacing:.12em; }
