@@ -44,10 +44,6 @@ export async function PUT(request: Request) {
   const lock = game ? Date.parse(game[3]) - 120_000 : bonusRound ? Math.min(...bonusGames.map(([, , , tipoff]) => Date.parse(tipoff) - 120_000)) : firstLock;
   if (!game && !bonusRound && !["champion", "finalFour"].includes(key || "")) return jsonError("Unknown pick");
   if (Date.now() >= lock) return jsonError("This pick has closed", 409);
-  if (submissionRound) {
-    const submitted = await sql`SELECT key FROM arena_picks WHERE user_id = ${user.id} AND key = ${`roundSubmitted:${submissionRound}`} LIMIT 1`;
-    if (submitted.length) return jsonError("Your submitted picks for this round are locked.", 409);
-  }
   if (game && selection !== "1" && selection !== "2") return jsonError("Invalid winner");
   if ((bonusRound || key === "champion") && selection && !teams.includes(selection as typeof teams[number])) return jsonError("Invalid team");
   if (key === "finalFour") {
@@ -60,15 +56,14 @@ export async function PUT(request: Request) {
     const saved = await sql`INSERT INTO arena_picks (user_id, key, selection)
       SELECT ${user.id}, ${key}, ${selection}
       WHERE clock_timestamp() < to_timestamp(${lock} / 1000.0)
-        AND NOT EXISTS (SELECT 1 FROM arena_picks WHERE user_id = ${user.id} AND key = ${submissionRound ? `roundSubmitted:${submissionRound}` : "__no_round__"})
       ON CONFLICT (user_id, key) DO UPDATE SET selection = EXCLUDED.selection, updated_at = now()
       WHERE clock_timestamp() < to_timestamp(${lock} / 1000.0)
       RETURNING key`;
-    if (!saved.length) return jsonError("This pick has closed or has already been submitted.", 409);
+    if (!saved.length) return jsonError("This pick has closed.", 409);
   } else {
     await sql`DELETE FROM arena_picks WHERE user_id = ${user.id} AND key = ${key}
       AND clock_timestamp() < to_timestamp(${lock} / 1000.0)
-      AND NOT EXISTS (SELECT 1 FROM arena_picks WHERE user_id = ${user.id} AND key = ${submissionRound ? `roundSubmitted:${submissionRound}` : "__no_round__"})`;
+`;
   }
   return Response.json({ ok: true });
 }
