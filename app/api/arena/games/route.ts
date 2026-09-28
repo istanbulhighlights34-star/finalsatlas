@@ -55,7 +55,7 @@ export async function GET() {
     Math.min(...b.filter((game) => !FINISHED.has(game.status || "")).map((game) => Date.parse(game.tipoff)))
   )[0] || groupValues
     .filter((group) => group.every((game) => FINISHED.has(game.status || "")))
-    .sort((a, b) => Math.max(...b.map((game) => Date.parse(game.tipoff))) - Math.max(...a.map((game) => Date.parse(game.tipoff)))[0];
+    .sort((a, b) => Math.max(...b.map((game) => Date.parse(game.tipoff))) - Math.max(...a.map((game) => Date.parse(game.tipoff))))[0];
 
   const games = selected || [];
   return NextResponse.json({ available: true, games, provider: "API-Sports", updatedAt: new Date().toISOString(), leagueId: EUROLEAGUE_ID, season: SEASON });
