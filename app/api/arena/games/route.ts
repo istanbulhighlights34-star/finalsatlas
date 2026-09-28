@@ -1,86 +1,217 @@
+import { NextResponse } from "next/server";
+import { database, fixtures } from "../../../../lib/arena";
+
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-import { NextResponse } from "next/server";
+const LEAGUE_ID = process.env.THESPORTSDB_EUROLEAGUE_ID || "4546";
+const SEASON = process.env.THESPORTSDB_EUROLEAGUE_SEASON || "2026-2027";
+const API_KEY = process.env.THESPORTSDB_API_KEY || "123";
+const SYNC_INTERVAL_MINUTES = 15;
+const LIVE_STATUSES = /live|in progress|quarter|\bq[1-4]\b|\b[1-4]h\b|half time|\bht\b|overtime|\bot\b/i;
+const FINAL_STATUSES = /match finished|finished|\bfinal\b|\bft\b|after extra time|\baet\b/i;
 
-const API_URL = "https://v1.basketball.api-sports.io";
-const EUROLEAGUE_ID = process.env.EUROLEAGUE_LEAGUE_ID || "120";
-// API-Sports season values use the starting year, e.g. 2026 for 2026/27.
-const SEASON = process.env.EUROLEAGUE_SEASON || "2026";
-const FINISHED = new Set(["FT", "AOT", "AWD", "CANC", "ABD", "POST"]);
+type ProviderEvent = {
+  idEvent?: string | null;
+  strHomeTeam?: string | null;
+  strAwayTeam?: string | null;
+  strStatus?: string | null;
+  strProgress?: string | null;
+  intHomeScore?: string | number | null;
+  intAwayScore?: string | number | null;
+};
+type ProviderPayload = { events?: ProviderEvent[] | null; error?: string | null };
+
+function normalized(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/\b(fc|bc|basketball|basket|club|team|the)\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+
+const TEAM_ALIASES: Record<string, string[]> = {
+  "olimpia milano": ["ea7 emp as milan", "ea7 emporio armani milan", "olimpia milano"],
+  "barcelona": ["barcelona", "fc barcelona"],
+  "asvel": ["ldlc asvel", "asvel villeurbanne", "asvel"],
+  "fenerbahce": ["fenerbahce beko", "fenerbahce"],
+  "partizan": ["partizan mozzart bet", "partizan"],
+  "anadolu efes": ["anadolu efes istanbul", "anadolu efes"],
+  "hapoel tel aviv": ["hapoel ibi tel aviv", "hapoel tel aviv"],
+  "bayern munich": ["fc bayern munich", "bayern munich"],
+};
+
+function teamMatches(fixtureName: string, providerName: string) {
+  const expected = normalized(fixtureName);
+  const actual = normalized(providerName);
+  if (!expected || !actual) return false;
+  const aliases = TEAM_ALIASES[expected] || [expected];
+  return aliases.some((alias) => {
+    const target = normalized(alias);
+    return actual === target || actual.includes(target) || target.includes(actual);
+  });
+}
+
+function score(value: ProviderEvent["intHomeScore"]): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+let providerSchemaReady: Promise<void> | null = null;
+
+async function ensureProviderTables(sql: ReturnType<typeof database>) {
+  if (!providerSchemaReady) providerSchemaReady = (async () => {
+  await sql`CREATE TABLE IF NOT EXISTS arena_provider_sync (
+    source text PRIMARY KEY,
+    last_synced_at timestamptz,
+    lease_until timestamptz,
+    last_error text
+  )`;
+  await sql`CREATE TABLE IF NOT EXISTS arena_provider_games (
+    game_id text PRIMARY KEY,
+    provider_event_id text,
+    status text,
+    home_score integer CHECK (home_score IS NULL OR home_score >= 0),
+    away_score integer CHECK (away_score IS NULL OR away_score >= 0),
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )`;
+  await sql`CREATE INDEX IF NOT EXISTS arena_provider_games_updated
+    ON arena_provider_games (updated_at DESC)`;
+  })();
+  try {
+    await providerSchemaReady;
+  } catch (error) {
+    providerSchemaReady = null;
+    throw error;
+  }
+}
+
+async function trySync(sql: ReturnType<typeof database>) {
+  const lease = await sql`
+    INSERT INTO arena_provider_sync (source, last_synced_at, lease_until)
+    VALUES ('thesportsdb-euroleague', NULL, now() + interval '2 minutes')
+    ON CONFLICT (source) DO UPDATE
+      SET lease_until = now() + interval '2 minutes'
+      WHERE (arena_provider_sync.last_synced_at IS NULL
+        OR arena_provider_sync.last_synced_at < now() - (${SYNC_INTERVAL_MINUTES} * interval '1 minute'))
+        AND (arena_provider_sync.lease_until IS NULL OR arena_provider_sync.lease_until < now())
+    RETURNING source
+  `;
+  if (!lease.length) return;
+
+  try {
+    const url = new URL(`https://www.thesportsdb.com/api/v1/json/${encodeURIComponent(API_KEY)}/eventsseason.php`);
+    url.searchParams.set("id", LEAGUE_ID);
+    url.searchParams.set("s", SEASON);
+    const response = await fetch(url, { signal: AbortSignal.timeout(12_000), cache: "no-store" });
+    if (!response.ok) throw new Error(`TheSportsDB HTTP ${response.status}`);
+    const payload = await response.json() as ProviderPayload;
+    if (!Array.isArray(payload.events) || payload.events.length === 0) {
+      throw new Error(payload.error || "TheSportsDB returned no season events");
+    }
+
+    let matchedEvents = 0;
+    for (const event of payload.events) {
+      const home = event.strHomeTeam?.trim();
+      const away = event.strAwayTeam?.trim();
+      if (!home || !away) continue;
+      const direct = fixtures.find((item) => teamMatches(item[1], home) && teamMatches(item[2], away));
+      const reversed = direct ? null : fixtures.find((item) => teamMatches(item[1], away) && teamMatches(item[2], home));
+      const fixture = direct || reversed;
+      if (!fixture) continue;
+      matchedEvents += 1;
+
+      const status = (event.strStatus || event.strProgress || "").trim();
+      const eventHomeScore = score(event.intHomeScore);
+      const eventAwayScore = score(event.intAwayScore);
+      const homeScore = reversed ? eventAwayScore : eventHomeScore;
+      const awayScore = reversed ? eventHomeScore : eventAwayScore;
+      await sql`
+        INSERT INTO arena_provider_games (game_id, provider_event_id, status, home_score, away_score, updated_at)
+        VALUES (${fixture[0]}, ${event.idEvent || null}, ${status || null}, ${homeScore}, ${awayScore}, now())
+        ON CONFLICT (game_id) DO UPDATE SET
+          provider_event_id = EXCLUDED.provider_event_id,
+          status = EXCLUDED.status,
+          home_score = EXCLUDED.home_score,
+          away_score = EXCLUDED.away_score,
+          updated_at = now()
+      `;
+
+      if (FINAL_STATUSES.test(status) && homeScore !== null && awayScore !== null && homeScore !== awayScore) {
+        await sql`
+          INSERT INTO arena_results (game_id, home_score, away_score)
+          VALUES (${fixture[0]}, ${homeScore}, ${awayScore})
+          ON CONFLICT (game_id) DO UPDATE
+            SET home_score = EXCLUDED.home_score, away_score = EXCLUDED.away_score, updated_at = now()
+        `;
+      }
+    }
+    if (!matchedEvents) throw new Error("TheSportsDB events did not match the configured EuroLeague fixtures");
+
+    await sql`
+      UPDATE arena_provider_sync
+      SET last_synced_at = now(), lease_until = NULL, last_error = NULL
+      WHERE source = 'thesportsdb-euroleague'
+    `;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown provider error";
+    console.error("TheSportsDB EuroLeague sync failed", { message: message.slice(0, 300) });
+    await sql`
+      UPDATE arena_provider_sync
+      SET last_synced_at = now(), lease_until = NULL, last_error = ${message.slice(0, 300)}
+      WHERE source = 'thesportsdb-euroleague'
+    `;
+  }
+}
 
 export async function GET() {
-  const key = process.env.API_SPORTS_BASKETBALL_KEY;
-  if (!key) return NextResponse.json({ available: false, error: "Basketball API key is not configured." }, { status: 503 });
-
-  const params = new URLSearchParams({ league: EUROLEAGUE_ID, season: SEASON });
-  const response = await fetch(`${API_URL}/games?${params.toString()}`, {
-    headers: { "x-apisports-key": key },
-    // Keep the free daily quota safe while the page can poll more frequently.
-    next: { revalidate: 1200 },
-  });
-  if (!response.ok) {
-    console.error("API-Sports basketball HTTP failure", { status: response.status });
-    return NextResponse.json({ available: false, error: "Basketball provider request failed.", diagnostic: "UPSTREAM_HTTP_ERROR" }, { status: 502 });
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json({ available: false, error: "Arena database is not configured." }, { status: 503 });
   }
 
-  let payload: { response?: Array<any>; errors?: Record<string, unknown> };
   try {
-    payload = await response.json();
-  } catch {
-    console.error("API-Sports basketball response was not valid JSON");
-    return NextResponse.json({ available: false, error: "Basketball provider returned an unreadable response.", diagnostic: "UPSTREAM_INVALID_JSON" }, { status: 502 });
-  }
-
-  const providerErrors = payload.errors && typeof payload.errors === "object"
-    ? Object.keys(payload.errors)
-    : [];
-  if (providerErrors.length > 0) {
-    // Keep detailed provider errors server-side and redact the configured credential before logging.
-    const errorDetails = JSON.stringify(payload.errors).replaceAll(key, "[REDACTED]").slice(0, 500);
-    console.error("API-Sports basketball provider errors", { fields: providerErrors, details: errorDetails });
+    const sql = database();
+    await ensureProviderTables(sql);
+    await trySync(sql);
+    const [providerRows, resultRows, syncRows] = await Promise.all([
+      sql`SELECT game_id, status, home_score, away_score, updated_at FROM arena_provider_games`,
+      sql`SELECT game_id, home_score, away_score FROM arena_results`,
+      sql`SELECT last_synced_at, last_error FROM arena_provider_sync WHERE source = 'thesportsdb-euroleague' LIMIT 1`,
+    ]);
+    const liveById = new Map(providerRows.map((row) => [String(row.game_id), row]));
+    const finalsById = new Map(resultRows.map((row) => [String(row.game_id), row]));
+    const games = fixtures.map(([id, home, away, tipoff]) => {
+      const live = liveById.get(id);
+      const final = finalsById.get(id);
+      const isFinal = !!final;
+      const liveScore = live && !isFinal && LIVE_STATUSES.test(String(live.status || ""))
+        && live.home_score !== null && live.away_score !== null
+        && Number.isInteger(Number(live.home_score)) && Number.isInteger(Number(live.away_score))
+        ? { home: Number(live.home_score), away: Number(live.away_score) }
+        : null;
+      return {
+        id, home, away, tipoff,
+        status: isFinal ? "Final" : live?.status || null,
+        result: isFinal ? { home: Number(final.home_score), away: Number(final.away_score) } : null,
+        liveScore,
+      };
+    });
+    return NextResponse.json({
+      available: true,
+      games,
+      provider: "TheSportsDB",
+      providerGameCount: providerRows.length,
+      updatedAt: syncRows[0]?.last_synced_at || null,
+      stale: !!syncRows[0]?.last_error,
+      leagueId: LEAGUE_ID,
+      season: SEASON,
+    }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    console.error("Arena score store unavailable", error);
     return NextResponse.json({
       available: false,
-      error: "Basketball provider rejected the request.",
-      diagnostic: "UPSTREAM_API_ERROR",
-      providerErrorFields: providerErrors,
-    }, { status: 502 });
+      error: "Arena score store is unavailable. Apply the TheSportsDB database migration.",
+      diagnostic: "SCORE_STORE_UNAVAILABLE",
+    }, { status: 503 });
   }
-  const allGames = (payload.response || []).map((game) => ({
-    id: String(game.id),
-    home: game.teams?.home?.name || "Home",
-    away: game.teams?.away?.name || "Away",
-    homeLogo: game.teams?.home?.logo || null,
-    awayLogo: game.teams?.away?.logo || null,
-    tipoff: game.date,
-    status: game.status?.short || null,
-    statusLong: game.status?.long || null,
-    round: game.week || game.stage || null,
-    result: !FINISHED.has(game.status?.short || "") && !["Q1", "Q2", "Q3", "Q4", "OT", "HT", "BT"].includes(game.status?.short || "")
-      ? null
-      : Number.isFinite(game.scores?.home?.total) && Number.isFinite(game.scores?.away?.total)
-        ? { home: game.scores.home.total, away: game.scores.away.total }
-        : null,
-  })).filter((game) => Number.isFinite(Date.parse(game.tipoff)));
-
-  // Show one active/upcoming round instead of dumping the entire season schedule.
-  const groups = new Map<string, typeof allGames>();
-  for (const game of allGames) {
-    const key = game.round || game.tipoff.slice(0, 10);
-    groups.set(key, [...(groups.get(key) || []), game]);
-  }
-  const now = Date.now();
-  const groupValues = [...groups.values()];
-  const activeGroups = groupValues.filter((group) => group.some((game) =>
-    !FINISHED.has(game.status || "") && Date.parse(game.tipoff) >= now - 3 * 60 * 60 * 1000
-  ));
-  const selected = activeGroups.sort((a, b) =>
-    Math.min(...a.filter((game) => !FINISHED.has(game.status || "")).map((game) => Date.parse(game.tipoff))) -
-    Math.min(...b.filter((game) => !FINISHED.has(game.status || "")).map((game) => Date.parse(game.tipoff)))
-  )[0] || groupValues
-    .filter((group) => group.every((game) => FINISHED.has(game.status || "")))
-    .sort((a, b) => Math.max(...b.map((game) => Date.parse(game.tipoff))) - Math.max(...a.map((game) => Date.parse(game.tipoff))))[0];
-
-  const games = selected || [];
-  return NextResponse.json({ available: true, games, provider: "API-Sports", providerGameCount: allGames.length, updatedAt: new Date().toISOString(), leagueId: EUROLEAGUE_ID, season: SEASON });
 }

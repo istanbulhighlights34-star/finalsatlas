@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import styles from "./arena.module.css";
 
-type Game = { id: string; home: string; away: string; tipoff: string; homeLogo?: string | null; awayLogo?: string | null; status?: string | null; result?: { home: number; away: number } };
+type Game = { id: string; home: string; away: string; tipoff: string; homeLogo?: string | null; awayLogo?: string | null; status?: string | null; result?: { home: number; away: number } | null; liveScore?: { home: number; away: number } | null };
 type Picks = { games: Record<string, "1" | "2">; topScorer: string; champion: string; finalFour: string[] };
 // EuroLeague Media Centre lists these times in CEST (UTC+2).
 const initialGames: Game[] = [
@@ -191,7 +191,7 @@ export default function ArenaPage() {
       </div>
     </header>
     <div className={styles.shell}>
-      <div className={styles.topline}><span>FINALS ATLAS / ARENA PULSE</span><span>{liveSource === "api" ? "LIVE DATA · API-SPORTS" : "EUROLEAGUE · 2026/27"}</span></div>
+      <div className={styles.topline}><span>FINALS ATLAS / ARENA PULSE</span><span>{liveSource === "api" ? "SCORE FEED · THESPORTSDB" : "EUROLEAGUE · 2026/27"}</span></div>
       <section className={styles.intro}><div><p className={styles.kicker}>ROUND 01 · 24–25 SEPTEMBER</p><h1><span className={styles.heroLine}><span className={styles.heroInitial}>F</span>OLLOW EVERY FINAL</span><br /><span className={styles.heroLine}><span className={styles.heroInitial}>A</span>CROSS EVERY ARENA</span></h1></div></section>
       <div className={styles.notice} role="status"><strong>{account ? `Signed in: ${account.email}` : "Personal preview"}</strong><span>{account ? "Your new picks are saved to your account. Scores appear after verified results are entered." : "Your picks are saved in this browser only. Sign in to save future picks and join groups. Existing device picks are not transferred after their deadlines."} {clockSource === "device" && "Server time is unavailable; deadlines currently use your device clock."}</span></div>
       {available && <section className={styles.panel} style={{ padding: 24, marginBottom: 24 }} aria-label="Account and friend groups">
@@ -245,14 +245,15 @@ export default function ArenaPage() {
             <p className={styles.muted}>1 = home win · 2 = away win. Each game closes two minutes before tip-off. Times below are local to you.</p>
             <div className={styles.matchList}>{games.map((game) => {
               const locked = now === null || now >= Date.parse(game.tipoff) - 120_000;
+              const score = game.result || game.liveScore;
               return <div className={styles.matchRow} key={game.id}>
-                <div className={styles.matchInfo}><time dateTime={game.tipoff}>{now === null ? "Checking local time…" : formatTime(game.tipoff)}</time><span>{now === null ? "Checking" : locked ? "Locked" : "Open"}</span></div>
+                <div className={styles.matchInfo}><time dateTime={game.tipoff}>{now === null ? "Checking local time…" : formatTime(game.tipoff)}</time><span>{now === null ? "Checking" : game.result ? "Final" : game.liveScore ? `Live · ${game.status || "In progress"}` : locked ? "Locked" : "Open"}</span></div>
                 <div className={styles.matchTeams}><strong>{game.home}</strong><span>vs</span><strong>{game.away}</strong></div>
                 <div className={styles.resultButtons} aria-label={`${game.home} vs ${game.away} winner`}>
-                  {(["1", "2"] as const).map((choice) => <button key={choice} type="button" disabled={game.result ? true : locked} aria-label={choice === "1" ? `${game.home} wins` : `${game.away} wins`} aria-pressed={picks.games[game.id] === choice} className={game.result ? (game.result.home === game.result.away ? styles.finalScoreBox : ((choice === "1" && game.result.home > game.result.away) || (choice === "2" && game.result.away > game.result.home) ? styles.finalWinner : styles.finalScoreBox)) : (picks.games[game.id] === choice ? styles.resultActive : styles.result)} onClick={() => {
+                  {(["1", "2"] as const).map((choice) => <button key={choice} type="button" disabled={game.result ? true : locked} aria-label={choice === "1" ? `${game.home} wins` : `${game.away} wins`} aria-pressed={picks.games[game.id] === choice} className={game.result ? (game.result.home === game.result.away ? styles.finalScoreBox : ((choice === "1" && game.result.home > game.result.away) || (choice === "2" && game.result.away > game.result.home) ? styles.finalWinner : styles.finalScoreBox)) : game.liveScore ? styles.finalScoreBox : (picks.games[game.id] === choice ? styles.resultActive : styles.result)} onClick={() => {
                     if (Date.now() + offset.current >= Date.parse(game.tipoff) - 120_000) { setNow(Date.now() + offset.current); return; }
                     update({ ...picks, games: { ...picks.games, [game.id]: choice } });
-                  }}>{game.result ? (choice === "1" ? game.result.home : game.result.away) : choice}</button>)}
+                  }}>{score ? (choice === "1" ? score.home : score.away) : choice}</button>)}
                 </div>
               </div>;
             })}</div>
