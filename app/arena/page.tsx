@@ -410,7 +410,7 @@ export default function ArenaPage() {
             </div>}
             {footballCompetition === "cups" && <div className={styles.europeanFixturePreview}>
               <div className={styles.europeanFixtureHead}><strong>UPCOMING FIXTURES</strong><span>{europeanFeedReady ? "THESPORTSDB FEED" : "CONNECTING TO FIXTURE FEED"}</span></div>
-              {europeanFixtures.length ? europeanFixtures.slice(0, 6).map(game => <article key={game.id} className={styles.europeanFixture}>
+              {europeanFixtures.some(game => Date.parse(game.kickoff) > (now ?? Date.now())) ? europeanFixtures.filter(game => Date.parse(game.kickoff) > (now ?? Date.now())).slice(0, 6).map(game => <article key={game.id} className={styles.europeanFixture}>
                 <div className={styles.europeanFixtureMeta}><span>{game.competition === "ucl" ? "CHAMPIONS LEAGUE" : game.competition === "uel" ? "EUROPA LEAGUE" : "CONFERENCE LEAGUE"}</span><time dateTime={game.kickoff}>{formatTime(game.kickoff)}</time></div>
                 <div className={styles.europeanFixtureTeams}>
                   <span>{game.homeLogo && <img src={game.homeLogo} alt="" loading="lazy" />}<strong>{game.home}</strong></span>
