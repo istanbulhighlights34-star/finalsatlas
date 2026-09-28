@@ -280,7 +280,7 @@ export default function ArenaPage() {
         <article className={styles.challenge}>
           <div className={styles.cardTop}><span>ROUND 02 / {roundGames.length} GAMES</span><span>{timeZone}</span></div>
           <div className={styles.challengeBody}>
-            <p className={styles.eyebrow}>MATCHROOM · 5 POINTS EACH</p><h2>Who wins?</h2>
+            <p className={styles.eyebrow}>MATCHROOM · 2 POINTS EACH</p><h2>Who wins?</h2>
             <p className={styles.muted}>1 = home win · 2 = away win. Each game closes two minutes before tip-off. Times below are local to you.</p>
             <div className={styles.matchList}>{roundGames.map((game) => {
               const locked = now === null || now >= Date.parse(game.tipoff) - 120_000;
@@ -294,7 +294,7 @@ export default function ArenaPage() {
                     update({ ...picks, games: { ...picks.games, [game.id]: choice } });
                   }}>{score ? (choice === "1" ? score.home : score.away) : choice}</button>)}
                 </div>
-                {game.result && <p className={styles.pickFeedback}>{picks.games[game.id] ? ((picks.games[game.id] === "1" && game.result.home > game.result.away) || (picks.games[game.id] === "2" && game.result.away > game.result.home) ? "Correct · +5 points" : "Incorrect · 0 points") : "No pick · 0 points"}</p>}
+                {game.result && <p className={styles.pickFeedback}>{picks.games[game.id] ? ((picks.games[game.id] === "1" && game.result.home > game.result.away) || (picks.games[game.id] === "2" && game.result.away > game.result.home) ? "Correct · +2 points" : "Incorrect · 0 points") : "No pick · 0 points"}</p>}
               </div>;
             })}</div>
             <p className={styles.status}>{complete} / {roundGames.length} selected · {openCount} games open · {saved ? account ? "Saved to account" : "Saved on this device" : "Saving or unavailable"}</p>
@@ -310,7 +310,7 @@ export default function ArenaPage() {
           </div>
         </aside>
       </section>
-      <section className={styles.historySection} aria-label="Week 1 results and points"><div className={styles.historyHeading}><div><span className={styles.pulseKicker}>COMPLETED ROUND</span><h2>Week 1 · Results & points</h2></div><span>{historyGames.filter(game => !!game.result).length} / {historyGames.length} results</span></div><div className={styles.historyList}>{historyGames.map(game => { const correct = !!game.result && ((picks.games[game.id] === "1" && game.result.home > game.result.away) || (picks.games[game.id] === "2" && game.result.away > game.result.home)); return <div className={styles.historyRow} key={game.id}><span>{game.home} <i>vs</i> {game.away}</span><strong>{game.result ? `${game.result.home} – ${game.result.away}` : "Result pending"}</strong><em className={game.result ? (correct ? styles.pointsWon : styles.pointsMissed) : ""}>{game.result ? (picks.games[game.id] ? (correct ? "Correct · +5 pts" : "Incorrect · 0 pts") : "No pick · 0 pts") : "Awaiting final score"}</em></div>; })}</div></section>
+      <section className={styles.historySection} aria-label="Week 1 results and points"><div className={styles.historyHeading}><div><span className={styles.pulseKicker}>COMPLETED ROUND</span><h2>Week 1 · Results & points</h2></div><span>{historyGames.filter(game => !!game.result).length} / {historyGames.length} results</span></div><div className={styles.historyList}>{historyGames.map(game => { const correct = !!game.result && ((picks.games[game.id] === "1" && game.result.home > game.result.away) || (picks.games[game.id] === "2" && game.result.away > game.result.home)); return <div className={styles.historyRow} key={game.id}><span>{game.home} <i>vs</i> {game.away}</span><strong>{game.result ? `${game.result.home} – ${game.result.away}` : "Result pending"}</strong><em className={game.result ? (correct ? styles.pointsWon : styles.pointsMissed) : ""}>{game.result ? (picks.games[game.id] ? (correct ? "Correct · +2 pts" : "Incorrect · 0 pts") : "No pick · 0 pts") : "Awaiting final score"}</em></div>; })}</div></section>
       <section id="standings" className={styles.dashboardGrid} aria-label="Season bonus predictions">
         <article className={styles.panel}><div className={styles.panelHeading}><span>SEASON CALL</span><span>+10 POINTS</span></div><div className={styles.sideBody}><h2>Champion</h2><p className={styles.muted}>Pick the 2026/27 champion before the first game.</p><label className={styles.selectLabel} htmlFor="champion">Choose a team</label><select id="champion" value={picks.champion} disabled={!bonusOpen} onChange={(event) => { if (Date.now() + offset.current < firstLock) update({ ...picks, champion: event.target.value }); else setNow(Date.now() + offset.current); }}><option value="">Select a team</option>{teams.map((team) => <option key={team}>{team}</option>)}</select></div></article>
         <article className={styles.panel}><div className={styles.panelHeading}><span>FINAL FOUR CALL</span><span>+3 PER TEAM</span></div><div className={styles.sideBody}><h2>Final Four</h2><p className={styles.muted}>Choose up to four teams before the first game. Each correct team earns three points.</p><div className={styles.teamPicker}>{teams.map((team) => {
