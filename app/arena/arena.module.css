@@ -678,3 +678,19 @@
 .miniBingoRow span{min-height:58px;padding:8px;background:#171717;display:grid;place-items:center;text-align:center;font-size:11px;font-weight:700}
 .communityEmpty{margin:0;padding:32px 24px;color:#888;font-size:14px;line-height:1.5}
 @media(max-width:760px){.bingoSlots,.bingoRow:first-of-type .bingoSlots,.bingoRow:last-of-type .bingoSlots{grid-template-columns:1fr}.bingoSlot,.bingoSlotSelected{min-height:78px}.communityGrid{grid-template-columns:1fr}.communityHead{align-items:flex-start;flex-direction:column}.miniBingoRow span{font-size:9px;min-height:52px}}
+
+.bingoTableWrap{margin:0 18px 18px;border:1px solid #303030;background:#0b0b0b}
+.bingoTableTitle{display:flex;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #303030;font-size:10px;font-weight:900;letter-spacing:.1em}
+.bingoTableTitle strong{color:#d7ff3f}
+.bingoTableHead,.bingoTable li{display:grid;grid-template-columns:minmax(150px,1.4fr) 90px repeat(3,minmax(92px,.7fr)) 70px;gap:12px;align-items:center}
+.bingoTableHead{padding:10px 14px;color:#777;font-size:9px;font-weight:800;letter-spacing:.08em;border-bottom:1px solid #303030}
+.bingoTable{list-style:none;margin:0;padding:0}
+.bingoTable li{min-height:58px;padding:10px 14px;border-bottom:1px solid #242424;font-size:12px}
+.bingoTable li:last-child{border-bottom:0}
+.bingoTable li>span:first-child{display:flex;align-items:center;gap:10px;font-weight:800}
+.bingoTable li>span:first-child b{width:24px;height:24px;display:grid;place-items:center;border:1px solid #383838;color:#8a8983;font-size:9px}
+.bingoTable li>span:not(:first-child){color:#ddd}.bingoTable li small{color:#666;font-size:9px}
+.bingoTable li>strong{color:#d7ff3f;font-size:22px;text-align:right}
+.cardLocked,.cardBuilding{font-size:9px;font-style:normal;font-weight:900;letter-spacing:.08em}
+.cardLocked{color:#d7ff3f}.cardBuilding{color:#777}
+@media(max-width:760px){.bingoTableWrap{overflow-x:auto;margin:0 10px 10px}.bingoTableHead,.bingoTable li{min-width:690px}.bingoTableTitle{position:sticky;left:0;min-width:320px;background:#0b0b0b}}
