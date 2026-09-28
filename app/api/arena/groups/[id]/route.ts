@@ -6,7 +6,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   if (!user) return jsonError("Sign in first", 401);
   const { id } = await context.params;
   const sql = database();
-  const now = new Date();
+  // Keep group cards on the same Europe/Istanbul Tuesday rollover as the fixture feed.
+  const now = new Date(Date.now() + 3 * 60 * 60 * 1000);
   const tuesday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - ((now.getUTCDay() + 5) % 7)));
   const bingoWeekKey = tuesday.toISOString().slice(0, 10);
   const bingoPickKey = `bingoCard:${bingoWeekKey}`;
