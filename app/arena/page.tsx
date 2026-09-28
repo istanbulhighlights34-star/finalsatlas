@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import styles from "./arena.module.css";
 
 type Game = { round?: number; id: string; home: string; away: string; tipoff: string; homeLogo?: string | null; awayLogo?: string | null; status?: string | null; result?: { home: number; away: number } | null; liveScore?: { home: number; away: number } | null };
+type EuropeanFixture = { id: string; competition: "ucl" | "uel" | "uecl"; round: number | null; home: string; away: string; kickoff: string; status: string | null; result: { home: number; away: number } | null; homeLogo: string | null; awayLogo: string | null };
 type Picks = { games: Record<string, "1" | "2">; topScorer: string; roundTopScorers: Record<string, string>; champion: string; finalFour: string[] };
 // EuroLeague Media Centre lists these times in CEST (UTC+2).
 const initialGames: Game[] = [
@@ -63,6 +64,8 @@ export default function ArenaPage() {
   const [footballCompetition, setFootballCompetition] = useState<"leagues" | "cups">("leagues");
   const [footballLeague, setFootballLeague] = useState("Süper Lig");
   const [footballCup, setFootballCup] = useState("Champions League");
+  const [europeanFixtures, setEuropeanFixtures] = useState<EuropeanFixture[]>([]);
+  const [europeanFeedReady, setEuropeanFeedReady] = useState(false);
   const [footballGame, setFootballGame] = useState<"picks" | "bingo">("picks");
   const [bingoPicks, setBingoPicks] = useState<Record<BingoTier, string[]>>({ elite: [], middle: [], outsider: [] });
   const [bingoSaved, setBingoSaved] = useState(false);
@@ -128,6 +131,24 @@ export default function ArenaPage() {
     }
     void refreshGames();
     const interval = setInterval(() => { void refreshGames(); }, 5 * 60_000);
+    return () => { active = false; clearInterval(interval); };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function refreshEuropeanFixtures() {
+      try {
+        const response = await fetch("/api/arena/european-cups", { cache: "no-store" });
+        const data = await response.json() as { available?: boolean; fixtures?: EuropeanFixture[] };
+        if (!active) return;
+        setEuropeanFeedReady(!!data.available);
+        if (response.ok && data.available && Array.isArray(data.fixtures)) setEuropeanFixtures(data.fixtures);
+      } catch {
+        if (active) setEuropeanFeedReady(false);
+      }
+    }
+    void refreshEuropeanFixtures();
+    const interval = setInterval(() => { void refreshEuropeanFixtures(); }, 5 * 60_000);
     return () => { active = false; clearInterval(interval); };
   }, []);
 
@@ -386,6 +407,17 @@ export default function ArenaPage() {
               <div><span>LEAGUE PHASE</span><strong>2 PTS</strong><p>For each team you correctly pick to finish in the top eight of a cup.</p></div>
               <div><span>SEASON PICK</span><strong>5 PTS</strong><p>For correctly picking the champion of each cup.</p></div>
               <small>No extra points are awarded for picking teams to advance in knockout ties.</small>
+            </div>}
+            {footballCompetition === "cups" && <div className={styles.europeanFixturePreview}>
+              <div className={styles.europeanFixtureHead}><strong>UPCOMING FIXTURES</strong><span>{europeanFeedReady ? "THESPORTSDB FEED" : "CONNECTING TO FIXTURE FEED"}</span></div>
+              {europeanFixtures.length ? europeanFixtures.slice(0, 6).map(game => <article key={game.id} className={styles.europeanFixture}>
+                <div className={styles.europeanFixtureMeta}><span>{game.competition === "ucl" ? "CHAMPIONS LEAGUE" : game.competition === "uel" ? "EUROPA LEAGUE" : "CONFERENCE LEAGUE"}</span><time dateTime={game.kickoff}>{formatTime(game.kickoff)}</time></div>
+                <div className={styles.europeanFixtureTeams}>
+                  <span>{game.homeLogo && <img src={game.homeLogo} alt="" loading="lazy" />}<strong>{game.home}</strong></span>
+                  <em>{game.result ? `${game.result.home} – ${game.result.away}` : "vs"}</em>
+                  <span>{game.awayLogo && <img src={game.awayLogo} alt="" loading="lazy" />}<strong>{game.away}</strong></span>
+                </div>
+              </article>) : <p className={styles.europeanFixtureEmpty}>{europeanFeedReady ? "No upcoming fixtures are available yet." : "Fixture data is loading. If it stays empty, the provider feed may be temporarily unavailable."}</p>}
             </div>}
             <div className={styles.emptySportMeta}><span>COMPETITION</span><strong>{footballCompetition === "leagues" ? "DOMESTIC LEAGUE" : "THREE EUROPEAN CUPS · ONE ARENA"}</strong><span>STATUS</span><strong>FIXTURE FEED IN PREPARATION</strong></div>
           </div>
