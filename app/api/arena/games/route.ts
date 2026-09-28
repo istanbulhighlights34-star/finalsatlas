@@ -38,6 +38,7 @@ const TEAM_ALIASES: Record<string, string[]> = {
   "anadolu efes": ["anadolu efes istanbul", "anadolu efes"],
   "hapoel tel aviv": ["hapoel ibi tel aviv", "hapoel tel aviv"],
   "bayern munich": ["fc bayern munich", "bayern munich"],
+  "maccabi tel aviv": ["maccabi rapyd tel aviv", "maccabi playtika tel aviv", "maccabi tel aviv"],
 };
 
 function teamMatches(fixtureName: string, providerName: string) {
@@ -45,9 +46,12 @@ function teamMatches(fixtureName: string, providerName: string) {
   const actual = normalized(providerName);
   if (!expected || !actual) return false;
   const aliases = TEAM_ALIASES[expected] || [expected];
+  const actualTokens = new Set(actual.split(" "));
   return aliases.some((alias) => {
-    const target = normalized(alias);
-    return actual === target || actual.includes(target) || target.includes(actual);
+    const targetTokens = normalized(alias).split(" ").filter(Boolean);
+    // Sponsor and city words can be inserted into provider names (e.g. “Maccabi Rapyd Tel Aviv”).
+    // Match the complete team identity tokens even when their order or spacing differs.
+    return targetTokens.every((token) => actualTokens.has(token));
   });
 }
 
@@ -205,6 +209,9 @@ export async function GET() {
       stale: !!syncRows[0]?.last_error,
       leagueId: LEAGUE_ID,
       season: SEASON,
+      unmatchedFixtures: fixtures
+        .filter(([id]) => !liveById.has(id))
+        .map(([id, home, away]) => ({ id, matchup: `${home} vs ${away}` })),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Arena score store unavailable", error);
