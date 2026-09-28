@@ -386,7 +386,7 @@ export default function ArenaPage() {
               <div className={styles.communityHead}><div><span className={styles.pulseKicker}>CIRCLE CARDS</span><h3>{bingoCards.length ? "The cards are open" : "Waiting for every player"}</h3></div><strong>{bingoReady} / {bingoPlayers} LOCKED</strong></div>
               {bingoCards.length ? <div className={styles.communityGrid}>{bingoCards.map(player => <article className={styles.miniBingo} key={player.id}><header><strong>{player.name}</strong><span>WEEK 01</span></header>{bingoTiers.map(tier => <div className={styles.miniBingoRow} key={tier.id}>{player.card[tier.id].map(team => <span key={team}>{team}</span>)}</div>)}</article>)}</div> : <p className={styles.communityEmpty}>No card is revealed yet. As soon as every member locks a complete card, all cards appear here together.</p>}
             </section>}
-          </div></div>
+          </div>
         </div>}
       </section>}
       <div className={selectedSport === "football" ? styles.hiddenSportContent : ""}>
