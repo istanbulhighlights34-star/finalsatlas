@@ -8,11 +8,16 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const sql = database();
   const access = await sql`SELECT g.name FROM arena_groups g JOIN arena_members m ON m.group_id = g.id WHERE g.id = ${id} AND m.user_id = ${user.id} LIMIT 1`;
   if (!access.length) return jsonError("Group not found", 404);
-  const [members, picks, results, season] = await Promise.all([
+  await sql`CREATE TABLE IF NOT EXISTS arena_bingo_team_results (
+    week_key text NOT NULL, team text NOT NULL, opponent text, kickoff timestamptz, status text, won boolean,
+    home_score integer, away_score integer, updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (week_key, team)
+  )`;
+  const [members, picks, results, season, bingoResults] = await Promise.all([
     sql`SELECT u.id, u.email, u.nickname FROM arena_members m JOIN arena_users u ON u.id = m.user_id WHERE m.group_id = ${id}`,
     sql`SELECT p.user_id, p.key, p.selection FROM arena_picks p JOIN arena_members m ON m.user_id = p.user_id WHERE m.group_id = ${id}`,
     sql`SELECT game_id, home_score, away_score FROM arena_results`,
     sql`SELECT champion, final_four FROM arena_season_results WHERE id = 1`,
+    sql`SELECT team, won, status FROM arena_bingo_team_results WHERE week_key = to_char(date_trunc('week', now()), 'YYYY-MM-DD')`,
   ]);
   const resultMap = new Map(results.map(r => [r.game_id, r]));
   const scores = members.map(m => {
@@ -54,9 +59,19 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     catch { return null; }
   });
   const bingoCards = lockedCards.every(Boolean) ? lockedCards : [];
+  const bingoResultMap = new Map(bingoResults.map(row => [String(row.team), row.won === true]));
   const bingoStandings = members.map(m => {
     const locked = lockedCards.find(card => card?.id === m.id);
-    return { id: m.id, name: m.nickname || `Player ${String(m.id).slice(0, 6)}`, locked: !!locked, firstChinko: 0, secondChinko: 0, bingo: 0, weeklyTotal: 0 };
+    let completedRows = 0;
+    if (locked?.card) {
+      for (const row of [locked.card.elite, locked.card.middle, locked.card.outsider]) {
+        if (Array.isArray(row) && row.length > 0 && row.every((team: string) => bingoResultMap.get(team) === true)) completedRows += 1;
+      }
+    }
+    const firstChinko = completedRows >= 1 ? 10 : 0;
+    const secondChinko = completedRows >= 2 ? 20 : 0;
+    const bingo = completedRows >= 3 ? 30 : 0;
+    return { id: m.id, name: m.nickname || `Player ${String(m.id).slice(0, 6)}`, locked: !!locked, completedRows, firstChinko, secondChinko, bingo, weeklyTotal: firstChinko + secondChinko + bingo };
   }).sort((a, b) => b.weeklyTotal - a.weeklyTotal || a.name.localeCompare(b.name));
   return Response.json({ name: access[0].name, standings: scores, bingoCards, bingoStandings, bingoReady: lockedCards.filter(Boolean).length, bingoPlayers: members.length, scoredGames: results.length, totalGames: fixtures.length }, { headers: { "Cache-Control": "no-store" } });
 }
