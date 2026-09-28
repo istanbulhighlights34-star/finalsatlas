@@ -2,7 +2,7 @@
 
 The account service needs a Neon Postgres database and a verified Resend sender.
 
-1. Create a Neon Postgres database and run `arena.sql` in its SQL editor. For automatic EuroLeague score sync, then run `the-sports-db.sql` in the same database.
+1. Create a Neon Postgres database and run `arena.sql` in its SQL editor. The score-sync tables are created automatically on the first Arena score request; `the-sports-db.sql` is also available as a manual, idempotent migration.
 2. Configure these Vercel environment variables for Production and Preview:
    - `DATABASE_URL`: Neon pooled connection string.
    - `RESEND_API_KEY`: Resend API key.
