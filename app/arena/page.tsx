@@ -39,16 +39,24 @@ const emptyPicks: Picks = { games: {}, topScorer: "", roundTopScorers: {}, champ
 const formatTime = (iso: string) => new Intl.DateTimeFormat(undefined, {
   weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZoneName: "short",
 }).format(new Date(iso));
+const teamShortName = (team: string) => ({
+  "Paris Saint-Germain": "PSG", "Beşiktaş": "BJK", "Fenerbahçe": "FB", "Galatasaray": "GS",
+  "Real Madrid": "R. MADRID", "Manchester City": "MAN CITY", "Bayern Munich": "BAYERN",
+  "Barcelona": "BARÇA", "Inter": "INTER", "Newcastle": "NEWCASTLE", "Başakşehir": "BAŞAKŞEHİR",
+  "Hoffenheim": "HOFFENHEIM", "Real Sociedad": "R. SOCIEDAD", "Real Betis": "R. BETIS",
+  "Atalanta": "ATALANTA", "Çorum FK": "ÇORUM FK", "Gaziantep": "GAZİANTEP",
+  "Crystal Palace": "C. PALACE", "St. Pauli": "ST. PAULI",
+}[team] || (team.length > 12 ? team.split(/\s+/).map(word => word[0]).join("").slice(0, 5).toUpperCase() : team.toUpperCase()));
 
 const bingoTiers = [
-  { id: "elite", label: "TOP TIER", limit: 4, points: 10, teams: ["Manchester City", "Bayern Munich", "Paris Saint-Germain", "Real Madrid", "Barcelona", "Inter"] },
+  { id: "elite", label: "TOP TIER", limit: 5, points: 10, teams: ["Manchester City", "Bayern Munich", "Paris Saint-Germain", "Real Madrid", "Barcelona", "Inter"] },
   { id: "middle", label: "CHALLENGERS", limit: 4, points: 20, teams: ["Newcastle", "Başakşehir", "Hoffenheim", "Real Sociedad", "Real Betis", "Atalanta"] },
   { id: "outsider", label: "OUTSIDERS", limit: 3, points: 30, teams: ["Çorum FK", "Gaziantep", "Angers", "Crystal Palace", "Lecce", "St. Pauli"] },
 ] as const;
 type BingoTier = typeof bingoTiers[number]["id"];
 const sharedCardPreview: { id: string; name: string; card: Record<BingoTier, string[]> }[] = [
-  { id: "preview-1", name: "Mert", card: { elite: ["Manchester City", "Real Madrid", "Inter", "Barcelona"], middle: ["Newcastle", "Real Betis", "Atalanta", "Hoffenheim"], outsider: ["Gaziantep", "Crystal Palace", "Lecce"] } },
-  { id: "preview-2", name: "Deniz", card: { elite: ["Bayern Munich", "Barcelona", "Paris Saint-Germain", "Real Madrid"], middle: ["Başakşehir", "Real Sociedad", "Newcastle", "Atalanta"], outsider: ["Çorum FK", "Angers", "St. Pauli"] } },
+  { id: "preview-1", name: "Mert", card: { elite: ["Manchester City", "Real Madrid", "Inter", "Barcelona", "Paris Saint-Germain"], middle: ["Newcastle", "Real Betis", "Atalanta", "Hoffenheim"], outsider: ["Gaziantep", "Crystal Palace", "Lecce"] } },
+  { id: "preview-2", name: "Deniz", card: { elite: ["Bayern Munich", "Barcelona", "Paris Saint-Germain", "Real Madrid", "Manchester City"], middle: ["Başakşehir", "Real Sociedad", "Newcastle", "Atalanta"], outsider: ["Çorum FK", "Angers", "St. Pauli"] } },
 ];
 
 export default function ArenaPage() {
@@ -471,7 +479,7 @@ export default function ArenaPage() {
         </div>
         <div className={styles.footballGameModes} role="tablist" aria-label="Football game mode">
           <button type="button" role="tab" aria-selected={footballGame === "picks"} className={footballGame === "picks" ? styles.footballGameActive : styles.footballGame} onClick={() => setFootballGame("picks")}><span>01</span><strong>Score Picks</strong><small>Predict match results</small></button>
-          <button type="button" role="tab" aria-selected={footballGame === "bingo"} className={footballGame === "bingo" ? styles.footballGameActive : styles.footballGame} onClick={() => setFootballGame("bingo")}><span>02</span><strong>Atlas Bingo</strong><small>Build an 11-team card</small></button>
+          <button type="button" role="tab" aria-selected={footballGame === "bingo"} className={footballGame === "bingo" ? styles.footballGameActive : styles.footballGame} onClick={() => setFootballGame("bingo")}><span>02</span><strong>Atlas Bingo</strong><small>Build a 12-team card</small></button>
         </div>
         {footballGame === "picks" ? <div className={styles.footballSelection}>
           <div className={styles.footballChoiceList} aria-label={footballCompetition === "leagues" ? "Select a domestic league" : "European Cups competition"}>
@@ -508,9 +516,9 @@ export default function ArenaPage() {
           <div className={styles.bingoIntro}>
             <span className={styles.pulseKicker}>WEEKLY 10-TEAM CARD</span>
             <h3>Build your Atlas Bingo</h3>
-            <p>Choose 4 favourites, 4 challengers and 3 outsiders. The harder outsider row stays shorter for balance. Cards open Tuesday, lock two minutes before Friday’s first listed match, and score through Monday.</p>
+            <p>Choose 5 favourites, 4 challengers and 3 outsiders. The harder outsider row stays shorter for balance. Cards open Tuesday, lock two minutes before Friday’s first listed match, and score through Monday.</p>
             <div className={styles.bingoRules}><span><strong>1ST CHINKO</strong><em>Any completed row · +10</em></span><span><strong>2ND CHINKO</strong><em>Any two completed rows · +20</em></span><span><strong>BINGO</strong><em>All 10 teams · +30</em></span></div>
-            <div className={styles.bingoScore}><span>CURRENT CARD</span><strong>{bingoPicks.elite.filter(Boolean).length + bingoPicks.middle.filter(Boolean).length + bingoPicks.outsider.filter(Boolean).length}<small> / 11 teams</small></strong><em>Maximum weekly score · 60 points</em></div>
+            <div className={styles.bingoScore}><span>CURRENT CARD</span><strong>{bingoPicks.elite.filter(Boolean).length + bingoPicks.middle.filter(Boolean).length + bingoPicks.outsider.filter(Boolean).length}<small> / 12 teams</small></strong><em>Maximum weekly score · 60 points</em></div>
           </div>
           <div className={styles.bingoCard}>
             <section className={styles.bingoFixtures} aria-label="Friday to Monday fixtures">
@@ -535,19 +543,19 @@ export default function ArenaPage() {
                   const teamResult = selected ? bingoTeamResults[selected] : undefined;
                   const finalLost = teamResult && teamResult.won === false;
                   const slotClass = teamResult?.won === true ? styles.bingoSlotWon : teamResult?.live ? styles.bingoSlotLive : finalLost ? styles.bingoSlotLost : selected ? styles.bingoSlotSelected : styles.bingoSlot;
-                  return <label className={slotClass} key={slot}><span>{teamResult?.opponent ? `vs ${teamResult.opponent}` : String(slot + 1).padStart(2, "0")}</span><select aria-label={`${tier.label} team ${slot + 1}`} value={selected} disabled={bingoSaved} onChange={event => updateBingoSlot(tier.id, slot, event.target.value)}><option value="">Choose team</option>{tier.teams.map(team => <option key={team} value={team} disabled={used.has(team) && team !== selected}>{team}</option>)}</select><em>{teamResult?.won === true ? "WIN" : teamResult?.live ? "LIVE" : finalLost ? "FT" : selected ? selected.slice(0, 2).toUpperCase() : "FA"}</em></label>;
+                  return <label className={slotClass} key={slot}><span>{teamResult?.opponent ? `vs ${teamResult.opponent}` : String(slot + 1).padStart(2, "0")}</span><select aria-label={`${tier.label} team ${slot + 1}`} value={selected} disabled={bingoSaved} onChange={event => updateBingoSlot(tier.id, slot, event.target.value)}><option value="">Choose team</option>{tier.teams.map(team => <option key={team} value={team} disabled={used.has(team) && team !== selected}>{teamShortName(team)}</option>)}</select><em>{teamResult?.won === true ? "WIN" : teamResult?.live ? "LIVE" : finalLost ? "FT" : selected ? selected.slice(0, 2).toUpperCase() : "FA"}</em></label>;
                 })}</div>
               </section>)}
-              <div className={styles.bingoSave}><div><strong>{bingoSaved ? "Your card is locked." : bingoComplete ? "Your 11-team card is ready." : "Complete all three rows to lock your card."}</strong><span>Cards stay private until every player in the circle has locked a complete card.</span></div><button type="button" disabled={!bingoComplete || bingoSaved || !bingoWeek} onClick={() => void lockBingoCard()}>{bingoSaved ? "CARD LOCKED" : "LOCK MY CARD"}</button></div>
+              <div className={styles.bingoSave}><div><strong>{bingoSaved ? "Your card is locked." : bingoComplete ? "Your 12-team card is ready." : "Complete all three rows to lock your card."}</strong><span>Cards stay private until every player in the circle has locked a complete card.</span></div><button type="button" disabled={!bingoComplete || bingoSaved || !bingoWeek} onClick={() => void lockBingoCard()}>{bingoSaved ? "CARD LOCKED" : "LOCK MY CARD"}</button></div>
             </div>
             {!selectedGroup && <section className={styles.communityCards} aria-label="Shared card preview">
               <div className={styles.communityHead}><div><span className={styles.pulseKicker}>SHARED VIEW PREVIEW</span><h3>How your circle will look</h3></div><strong>OPENS WHEN ALL CARDS LOCK</strong></div>
               <p className={styles.communityEmpty}>This preview shows the common room layout. In a real circle, every member’s locked card appears here together with live match states and weekly points.</p>
-              <div className={styles.communityGrid}>{sharedCardPreview.map(player => <article className={styles.miniBingo} key={player.id}><header><strong>{player.name}</strong><span>DEMO CARD</span></header>{bingoTiers.map(tier => <div className={styles.miniBingoRow} key={tier.id}>{player.card[tier.id].map((team, index) => <span key={team} className={index === 0 ? styles.miniWon : index === 1 ? styles.miniLive : ""}><b>{team}</b><small>{index === 0 ? "Won this week" : index === 1 ? "Match in progress" : "Scheduled"}</small><em>{index === 0 ? "WIN" : index === 1 ? "LIVE" : "—"}</em></span>)}</div>)}</article>)}</div>
+              <div className={styles.communityGrid}>{sharedCardPreview.map(player => <article className={styles.miniBingo} key={player.id}><header><strong>{player.name}</strong><span>DEMO CARD</span></header>{bingoTiers.map(tier => <div className={styles.miniBingoRow} key={tier.id}>{player.card[tier.id].map((team, index) => <span key={team} className={index === 0 ? styles.miniWon : index === 1 ? styles.miniLive : ""}><b>{teamShortName(team)}</b><small>{index === 0 ? "Won this week" : index === 1 ? "Match in progress" : "Scheduled"}</small><em>{index === 0 ? "WIN" : index === 1 ? "LIVE" : "—"}</em></span>)}</div>)}</article>)}</div>
             </section>}
             {selectedGroup && <section className={styles.communityCards}>
               <div className={styles.communityHead}><div><span className={styles.pulseKicker}>CIRCLE CARDS</span><h3>{bingoCards.length ? "The cards are open" : "Waiting for every player"}</h3></div><strong>{bingoReady} / {bingoPlayers} LOCKED</strong></div>
-              {bingoCards.length ? <div className={styles.communityGrid}>{bingoCards.map(player => <article className={styles.miniBingo} key={player.id}><header><strong>{player.name}</strong><span>{bingoWeek || "CURRENT WEEK"}</span></header>{bingoTiers.map(tier => <div className={styles.miniBingoRow} key={tier.id}>{player.card[tier.id].map(team => { const result = bingoTeamResults[team]; return <span key={team} className={result?.won === true ? styles.miniWon : result?.live ? styles.miniLive : result?.won === false ? styles.miniLost : ""}><b>{team}</b><small>{result?.opponent ? `vs ${result.opponent}` : "Scheduled"}</small><em>{result?.won === true ? "WIN" : result?.live ? "LIVE" : result?.won === false ? "FT" : "—"}</em></span>; })}</div>)}</article>)}</div> : <p className={styles.communityEmpty}>No card is revealed yet. As soon as every member locks a complete card, all cards appear here together.</p>}
+              {bingoCards.length ? <div className={styles.communityGrid}>{bingoCards.map(player => <article className={styles.miniBingo} key={player.id}><header><strong>{player.name}</strong><span>{bingoWeek || "CURRENT WEEK"}</span></header>{bingoTiers.map(tier => <div className={styles.miniBingoRow} key={tier.id}>{player.card[tier.id].map(team => { const result = bingoTeamResults[team]; return <span key={team} className={result?.won === true ? styles.miniWon : result?.live ? styles.miniLive : result?.won === false ? styles.miniLost : ""}><b>{teamShortName(team)}</b><small>{result?.opponent ? `vs ${result.opponent}` : "Scheduled"}</small><em>{result?.won === true ? "WIN" : result?.live ? "LIVE" : result?.won === false ? "FT" : "—"}</em></span>; })}</div>)}</article>)}</div> : <p className={styles.communityEmpty}>No card is revealed yet. As soon as every member locks a complete card, all cards appear here together.</p>}
               <div className={styles.bingoTableWrap}>
                 <div className={styles.bingoTableTitle}><span>{bingoWeek ? `WEEK OF ${bingoWeek} · SCOREBOARD` : "CURRENT WEEK · SCOREBOARD"}</span><strong>MAX 60 PTS</strong></div>
                 <div className={styles.bingoTableHead}><span>PLAYER</span><span>CARD</span><span>1ST CHINKO</span><span>2ND CHINKO</span><span>BINGO</span><span>TOTAL</span></div>
