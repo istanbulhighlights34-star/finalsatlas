@@ -222,7 +222,6 @@ export default function ArenaPage() {
   }
 
   const bingoComplete = bingoTiers.every(tier => bingoPicks[tier.id].length === tier.limit);
-  const bingoTotal = bingoTiers.reduce((total, tier) => total + (bingoPicks[tier.id].length === tier.limit ? tier.points : 0), 0);
 
   async function submitCurrentRound() {
     if (complete !== roundGames.length || !roundGames.length) return;
