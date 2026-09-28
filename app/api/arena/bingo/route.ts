@@ -43,10 +43,13 @@ async function ensureTables(sql: ReturnType<typeof database>) {
 function weekWindow() {
   const now = new Date();
   const day = now.getUTCDay();
-  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - ((day + 6) % 7)));
-  const sunday = new Date(monday); sunday.setUTCDate(monday.getUTCDate() + 6);
+  // League Bingo opens on Tuesday, covers Friday through the following Monday,
+  // then archives when the next Tuesday card opens.
+  const tuesday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - ((day + 5) % 7)));
+  const friday = new Date(tuesday); friday.setUTCDate(tuesday.getUTCDate() + 3);
+  const monday = new Date(tuesday); monday.setUTCDate(tuesday.getUTCDate() + 6);
   const iso = (date: Date) => date.toISOString().slice(0, 10);
-  return { key: iso(monday), from: iso(monday), to: iso(sunday) };
+  return { key: iso(tuesday), from: iso(friday), to: iso(monday) };
 }
 
 async function sync(sql: ReturnType<typeof database>, week: ReturnType<typeof weekWindow>) {
