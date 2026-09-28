@@ -367,7 +367,7 @@ export default function ArenaPage() {
             <h3>Build your Atlas Bingo</h3>
             <p>Choose 3 favourites, 4 challengers and 3 outsiders. A winning team lights up its square. The order of the rows does not matter.</p>
             <div className={styles.bingoRules}><span><strong>1ST CHINKO</strong><em>Any completed row · +10</em></span><span><strong>2ND CHINKO</strong><em>Any two completed rows · +20</em></span><span><strong>BINGO</strong><em>All 10 teams · +30</em></span></div>
-            <div className={styles.bingoScore}><span>CURRENT CARD</span><strong>{bingoPicks.elite.length + bingoPicks.middle.length + bingoPicks.outsider.length}<small> / 10 teams</small></strong><em>Maximum weekly score · 60 points</em></div>
+            <div className={styles.bingoScore}><span>CURRENT CARD</span><strong>{bingoPicks.elite.filter(Boolean).length + bingoPicks.middle.filter(Boolean).length + bingoPicks.outsider.filter(Boolean).length}<small> / 10 teams</small></strong><em>Maximum weekly score · 60 points</em></div>
           </div>
           <div className={styles.bingoCard}>
             <div className={styles.bingoTicket}>
