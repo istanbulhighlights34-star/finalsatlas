@@ -72,7 +72,8 @@ async function sync(sql: ReturnType<typeof database>, week: ReturnType<typeof we
   const lease = await sql`INSERT INTO arena_bingo_sync (source, lease_until)
     VALUES ('api-sports-football', now() + interval '2 minutes')
     ON CONFLICT (source) DO UPDATE SET lease_until = now() + interval '2 minutes'
-    WHERE (arena_bingo_sync.last_synced_at IS NULL OR arena_bingo_sync.last_synced_at < now() - interval '3 hours')
+    WHERE ((arena_bingo_sync.last_synced_at IS NULL OR arena_bingo_sync.last_synced_at < now() - interval '3 hours')
+      OR NOT EXISTS (SELECT 1 FROM arena_bingo_fixtures WHERE week_key = ${week.key}))
       AND (arena_bingo_sync.lease_until IS NULL OR arena_bingo_sync.lease_until < now())
     RETURNING source`;
   if (!lease.length) return;
