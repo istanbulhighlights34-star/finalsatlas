@@ -18,8 +18,7 @@ export async function PUT(request: Request) {
     const round = body.round;
     if (round !== 1 && round !== 2) return jsonError("Unknown round");
     const roundGames = fixtures.filter(([id]) => fixtureRound[id] === round);
-    const firstRoundLock = Math.min(...roundGames.map(([, , , tipoff]) => Date.parse(tipoff) - 120_000));
-    if (!roundGames.length || Date.now() >= firstRoundLock) return jsonError("This round has closed", 409);
+    if (!roundGames.length) return jsonError("Unknown round");
     const rows = await sql`SELECT key, selection FROM arena_picks WHERE user_id = ${user.id}`;
     const saved = new Map(rows.map(row => [String(row.key), String(row.selection)]));
     if (roundGames.some(([id]) => saved.get(`game:${id}`) !== "1" && saved.get(`game:${id}`) !== "2")) {
@@ -27,7 +26,6 @@ export async function PUT(request: Request) {
     }
     const submitted = await sql`INSERT INTO arena_picks (user_id, key, selection)
       SELECT ${user.id}, ${`roundSubmitted:${round}`}, 'submitted'
-      WHERE clock_timestamp() < to_timestamp(${firstRoundLock} / 1000.0)
       ON CONFLICT (user_id, key) DO NOTHING
       RETURNING key`;
     if (!submitted.length) {
