@@ -1,4 +1,4 @@
-import { database, fixtures, jsonError, member, teams } from "../../../../../lib/arena";
+import { database, fixtureRound, fixtures, jsonError, member, teams } from "../../../../../lib/arena";
 
 export const runtime = "nodejs";
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -26,11 +26,19 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       const winner = Number(result.home_score) > Number(result.away_score) ? "1" : "2";
       if (byKey.get(`game:${game[0]}`) === winner) points += 2;
     }
-    if (results.length === fixtures.length) {
+    for (const round of [1, 2]) {
+      const roundGames = fixtures.filter(([gameId]) => (fixtureRound[gameId] || 1) === round);
+      if (!roundGames.length || roundGames.some(([gameId]) => !resultMap.has(gameId))) continue;
       const totals = new Map<string, number>();
-      for (const game of fixtures) { const r = resultMap.get(game[0])!; totals.set(game[1], Number(r.home_score)); totals.set(game[2], Number(r.away_score)); }
-      const high = Math.max(...totals.values());
-      if (totals.get(String(byKey.get("topScorer"))) === high) points += 5;
+      for (const game of roundGames) {
+        const result = resultMap.get(game[0])!;
+        totals.set(game[1], (totals.get(game[1]) || 0) + Number(result.home_score));
+        totals.set(game[2], (totals.get(game[2]) || 0) + Number(result.away_score));
+      }
+      const highest = Math.max(...totals.values());
+      const winners = [...totals.entries()].filter(([, total]) => total === highest).map(([team]) => team);
+      const selected = byKey.get(`topScorer:${round}`) || (round === 1 ? byKey.get("topScorer") : undefined);
+      if (selected && winners.includes(String(selected))) points += 5;
     }
     if (season.length) {
       if (byKey.get("champion") === season[0].champion) points += 10;
