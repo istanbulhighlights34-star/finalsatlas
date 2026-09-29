@@ -378,7 +378,7 @@ export default function ArenaPage() {
       <section className={styles.arenaInstitution} aria-label="Arena home">
         <div className={styles.arenaInstitutionHead}>
           <div><span className={styles.pulseKicker}>ARENA HOME</span><h2>Your season starts with a circle.</h2><p>Create a private circle, open a competition and invite only the friends who will play that game.</p></div>
-          <div className={styles.arenaIdentity}><span>{account ? "PLAYER ACCOUNT" : "GUEST MODE"}</span><strong>{account ? nickname || account.email.split("@")[0] : "Sign in to create a circle"}</strong><em>{groups.length} circles</em></div>
+          <div className={styles.arenaIdentity}><span>{account ? "PLAYER ACCOUNT" : "SECURE PLAYER ACCESS"}</span><strong>{account ? nickname || account.email.split("@")[0] : "Your competitions live in one private dashboard."}</strong><em>{account ? `${groups.length} circles` : "Passwordless email sign-in"}</em><Link className={styles.arenaPortalButton} href={account ? "/arena/me" : "/arena/sign-in"}>{account ? "OPEN MY ARENA →" : "SIGN IN TO ARENA →"}</Link></div>
         </div>
         <div className={styles.arenaPath} aria-label="How Arena works">
           <article><span>01</span><strong>Create a circle</strong><p>Your permanent friend group. Members can belong to more than one circle.</p><a href="#circle">Circle desk →</a></article>
@@ -395,7 +395,7 @@ export default function ArenaPage() {
         </div>
         <div className={styles.invitationPolicy} id="invitations"><strong>ONE CLEAR INVITATION RULE</strong><p>A circle stores your friends. A competition decides who plays. Every invitation names the circle, sport, game and season before the player joins.</p></div>
       </section>
-      {available && <section id="circle" className={styles.panel} style={{ padding: 24, marginBottom: 24 }} aria-label="Account and friend groups">
+      {available && account && <section id="circle" className={styles.panel} style={{ padding: 24, marginBottom: 24 }} aria-label="Account and friend groups">
         <div className={styles.panelHeading}><span>CIRCLE DESK</span><span>MEMBERS · INVITATIONS · COMPETITIONS</span></div>
         {!account ? <form className={styles.accountForm} onSubmit={async event => { event.preventDefault(); setMessage("Sending sign-in link…"); try { const response = await fetch("/api/arena/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }); const data = await response.json(); setMessage(response.ok ? "Check your email for a sign-in link. You will stay signed in for 90 days." : data.error); } catch { setMessage("Could not send sign-in link."); } }}><p>Sign in with email to create circles, open competitions and invite players.</p><div className={styles.accountFields}><input type="email" required placeholder="you@example.com" value={email} onChange={event => setEmail(event.target.value)} /> <button className={styles.result} type="submit">Email me a sign-in link</button></div></form> : <div>
           <form className={styles.accountForm} onSubmit={async event => { event.preventDefault(); const response = await fetch("/api/arena/auth", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nickname }) }); setMessage(response.ok ? "Nickname saved." : "Could not save nickname."); }}><label htmlFor="nickname">Your Arena name</label><div className={styles.accountFields}><input id="nickname" maxLength={32} required value={nickname} onChange={event => setNickname(event.target.value)} placeholder="Your nickname" /> <button className={styles.result} type="submit">Save card</button></div></form>
@@ -462,12 +462,12 @@ export default function ArenaPage() {
         </div>
         <div className={styles.pulseMetrics}>
           <div><span>CALLS MADE</span><strong>{complete}<small> / 10</small></strong><em>{openCount} open</em></div>
-          <div><span>SEASON SCORE</span><strong>{standings.find(entry => entry.name === nickname)?.points || 0}</strong><em>{selectedGroup ? "Your circle" : "No circle yet"}</em></div>
+          <div><span>PLAYER SPACE</span><strong>{groups.length}</strong><em>{account ? "My Arena ready" : "Sign in required"}</em></div>
           <div><span>YOUR CIRCLE</span><strong>{groups.length}</strong><em>{groups.length ? "Ready to play" : "Create or join"}</em></div>
         </div>
         <div className={styles.pulseActions}>
           <a href="#matchroom">Open selected arena <b>→</b></a>
-          <a href="#standings">View standings <b>→</b></a>
+          <Link href={account ? "/arena/me" : "/arena/sign-in"}>Open My Arena <b>→</b></Link>
         </div>
       </section>{selectedSport === "football" && <section className={styles.footballHub} aria-label="Football competitions">
         <div className={styles.footballHubHeader}>
