@@ -869,3 +869,8 @@
   .miniBingoRow:first-of-type { grid-template-columns:repeat(5,minmax(0,1fr)); }
   .miniBingoRow:last-of-type { grid-template-columns:repeat(3,minmax(0,1fr)); }
 }
+
+
+/* Professional Arena access: rankings stay inside personal competition rooms. */
+.arenaPortalButton { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 14px; background:#d5ff3f; color:#101210; text-decoration:none; font:800 9px Arial,sans-serif; letter-spacing:.1em; }
+.standingsWrap { display:none; }
