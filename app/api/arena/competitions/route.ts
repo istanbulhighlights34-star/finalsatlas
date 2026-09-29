@@ -34,7 +34,9 @@ export async function GET(request: Request) {
   if (!access.length) return jsonError("Circle not found", 404);
   const competitions = await sql`SELECT c.id, c.name, c.sport, c.game_type, c.season, c.created_at,
     (c.owner_id=${user.id}) AS is_owner, count(cm.user_id)::integer AS players
-    FROM arena_competitions c LEFT JOIN arena_competition_members cm ON cm.competition_id=c.id
+    FROM arena_competitions c
+    JOIN arena_competition_members mine ON mine.competition_id=c.id AND mine.user_id=${user.id}
+    LEFT JOIN arena_competition_members cm ON cm.competition_id=c.id
     WHERE c.group_id=${groupId}
     GROUP BY c.id ORDER BY c.created_at DESC`;
   return Response.json({ competitions }, { headers: { "Cache-Control": "no-store" } });
